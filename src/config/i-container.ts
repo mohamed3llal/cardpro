@@ -33,6 +33,9 @@ import { UpdateSubcategory } from "@application/use-cases/domain/UpdateSubcatego
 import { DeleteSubcategory } from "@application/use-cases/domain/DeleteSubcategory";
 import { DomainController } from "@presentation/controllers/DomainController";
 
+import { AdminService } from "@infrastructure/services/AdminService";
+import { AdminController } from "@presentation/controllers/AdminController";
+
 import { env } from "./env";
 import dotenv from "dotenv";
 dotenv.config();
@@ -84,6 +87,10 @@ export class DIContainer {
   // Config
   private readonly googleClientId: string;
 
+  //admin
+  public readonly adminService: AdminService;
+  public readonly adminController: AdminController;
+
   private constructor() {
     // Initialize Repositories
     this.cardRepository = new CardRepository();
@@ -112,6 +119,9 @@ export class DIContainer {
     this.getDashboardStatsUseCase = new GetDashboardStatsUseCase(
       this.analyticsRepository
     );
+
+    this.adminService = new AdminService();
+    this.adminController = new AdminController(this.adminService);
 
     // Initialize Auth Use Cases
     this.googleAuthUseCase = new GoogleAuthUseCase(

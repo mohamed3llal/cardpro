@@ -81,7 +81,8 @@ class Server {
       this.diContainer.authController,
       this.diContainer.userController,
       this.diContainer.authService,
-      this.diContainer.domainController
+      this.diContainer.domainController,
+      this.diContainer.adminController
     );
 
     this.app.use("/api/v1", routes);

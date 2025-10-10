@@ -18,9 +18,9 @@ export interface AdminUserDTO {
   full_name: string;
   avatar_url: string;
   role: string;
-  status: string;
+  status: "active" | "suspended";
   card_count: number;
-  created_at?: Date;
+  created_at: string;
 }
 
 export interface AdminCardDTO {
@@ -31,24 +31,31 @@ export interface AdminCardDTO {
   domain: string;
   is_public: boolean;
   view_count: number;
-  created_at?: Date;
+  created_at: string;
   user_id: string;
   user_email: string;
 }
 
-export interface AdminReportDTO {
+export interface AnalyticsDTO {
+  date: string;
+  views: number;
+  cards: number;
+  users: number;
+}
+
+export interface ReportDTO {
   id: string;
   card_id: string;
   reporter_id: string;
   reason: string;
   description: string;
   status: "pending" | "resolved" | "dismissed";
-  created_at: Date;
+  created_at: string;
   card_name: string;
   reporter_email: string;
 }
 
-export interface AdminReviewDTO {
+export interface ReviewDTO {
   id: string;
   business_id: string;
   user_id: string;
@@ -56,25 +63,25 @@ export interface AdminReviewDTO {
   rating: number;
   title: string;
   comment: string;
-  created_at: Date;
+  created_at: string;
 }
 
-export interface AdminFeedbackDTO {
+export interface FeedbackDTO {
   id: string;
   user_id: string;
   user_email: string;
-  type: string;
+  type: "bug" | "feature" | "general";
   message: string;
   status: "pending" | "reviewed" | "resolved";
-  created_at: Date;
+  created_at: string;
 }
 
-export interface AdminSubscriptionDTO {
+export interface SubscriptionDTO {
   id: string;
   user_id: string;
   user_email: string;
   plan: "free" | "pro" | "premium";
-  status: string;
-  expiresAt: Date;
-  created_at: Date;
+  status: "active" | "cancelled" | "expired";
+  expiresAt: string;
+  created_at: string;
 }

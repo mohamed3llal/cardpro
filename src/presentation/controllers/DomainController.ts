@@ -6,7 +6,19 @@ import {
 } from "../../application/use-cases/domain/GetDomainByKey";
 import {
   CreateDomain,
-  CreateDomainDTO,
+  /*************  ✨ Windsurf Command ⭐  *************/
+  /**
+   * Constructor for DomainController.
+   * @param {GetAllDomains} getAllDomainsUseCase - Use case for getting all domains.
+   * @param {GetDomainByKey} getDomainByKeyUseCase - Use case for getting a domain by key.
+   * @param {CreateDomain} createDomainUseCase - Use case for creating a domain.
+   * @param {UpdateDomain} updateDomainUseCase - Use case for updating a domain.
+   * @param {DeleteDomain} deleteDomainUseCase - Use case for deleting a domain.
+   * @param {AddSubcategory} addSubcategoryUseCase - Use case for adding a subcategory.
+   * @param {UpdateSubcategory} updateSubcategoryUseCase - Use case for updating a subcategory.
+   * @param {DeleteSubcategory} deleteSubcategoryUseCase - Use case for deleting a subcategory.
+   */
+  /*******  7f5a8d11-08c6-4d8a-a4c0-4293fbfb43da  *******/ CreateDomainDTO,
   DomainValidationError,
   DuplicateDomainKeyError,
 } from "../../application/use-cases/domain/CreateDomain";
