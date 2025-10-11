@@ -1,20 +1,26 @@
+// src/infrastructure/database/models/UserModel.ts
 import mongoose, { Schema, Document } from "mongoose";
-import { UserRole } from "@domain/entities/User";
+
+export type VerificationStatus = "none" | "pending" | "approved" | "rejected";
 
 export interface IUserDocument extends Document {
   email: string;
-  password: string;
   firstName: string;
   lastName: string;
   phone?: string;
   avatar?: string;
-  role: UserRole;
-  isAdmin: boolean;
-  isEmailVerified: boolean;
+  role: string;
   isActive: boolean;
-  lastLoginAt?: Date;
-  bio?: string;
-  city?: string;
+  isAdmin: boolean;
+
+  // Domain Verification (Profile-based)
+  domainKey?: string;
+  subcategoryKey?: string;
+  domainVerified?: boolean;
+  domainDocumentUrl?: string;
+  verificationStatus?: VerificationStatus;
+  verificationNotes?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,7 +35,6 @@ const UserSchema = new Schema<IUserDocument>(
       trim: true,
       index: true,
     },
-
     firstName: {
       type: String,
       required: true,
@@ -42,25 +47,16 @@ const UserSchema = new Schema<IUserDocument>(
     },
     phone: {
       type: String,
-      default: undefined,
+      trim: true,
     },
     avatar: {
       type: String,
-      default: undefined,
     },
     role: {
       type: String,
-      enum: Object.values(UserRole),
-      default: UserRole.USER,
+      enum: ["user", "admin", "moderator", "super_admin"],
+      default: "user",
       index: true,
-    },
-    bio: {
-      type: String,
-      default: undefined,
-    },
-    city: {
-      type: String,
-      default: undefined,
     },
     isActive: {
       type: Boolean,
@@ -70,18 +66,52 @@ const UserSchema = new Schema<IUserDocument>(
     isAdmin: {
       type: Boolean,
       default: false,
+      index: true,
     },
-    lastLoginAt: {
-      type: Date,
-      default: undefined,
+
+    // Domain Verification Fields
+    domainKey: {
+      type: String,
+      index: true,
+    },
+    subcategoryKey: {
+      type: String,
+      index: true,
+    },
+    domainVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    domainDocumentUrl: {
+      type: String,
+    },
+    verificationStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
+      index: true,
+    },
+    verificationNotes: {
+      type: String,
     },
   },
   {
-    timestamps: true,
+    timestamps: { createdAt: "createdAt", updatedAt: "updatedAt" },
   }
 );
 
-UserSchema.index({ role: 1, isActive: 1 });
-UserSchema.index({ createdAt: -1 });
+// Indexes for verification queries
+UserSchema.index({ verificationStatus: 1, domainVerified: 1 });
+UserSchema.index({ domainKey: 1, subcategoryKey: 1 });
+
+// Virtual for full name
+UserSchema.virtual("fullName").get(function () {
+  return `${this.firstName} ${this.lastName}`;
+});
+
+// Ensure virtuals are included in JSON
+UserSchema.set("toJSON", { virtuals: true });
+UserSchema.set("toObject", { virtuals: true });
 
 export const UserModel = mongoose.model<IUserDocument>("User", UserSchema);

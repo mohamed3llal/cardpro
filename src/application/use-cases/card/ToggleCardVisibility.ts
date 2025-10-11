@@ -1,7 +1,5 @@
-// src/application/use-cases/card/ToggleCardVisibility.ts
-
-import { Card } from "../../../domain/entities/Card";
-import { ICardRepository } from "../../../domain/interfaces/ICardRepository";
+import { Card } from "@domain/entities/Card";
+import { ICardRepository } from "@domain/interfaces/ICardRepository";
 
 export interface ToggleCardVisibilityDTO {
   card_id: string;

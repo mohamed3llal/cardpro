@@ -1,4 +1,4 @@
-import { Subcategory } from "./../../domain/entities/Domain";
+import { Subcategory } from "@domain/entities/Domain";
 export interface CreateDomainDTO {
   key: string;
   ar: string;

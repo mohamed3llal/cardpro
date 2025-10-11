@@ -3,7 +3,6 @@ import { IAuthService } from "@domain/interfaces/IAuthServices";
 import { User, UserRole } from "@domain/entities/User";
 import { AppError } from "@shared/errors/AppError";
 import { OAuth2Client } from "google-auth-library";
-import { AuthService } from "../../../infrastructure/services/AuthService";
 
 export interface GoogleAuthDTO {
   token: string; // Google ID token from client

@@ -67,7 +67,7 @@ export class AdminService implements IAdminServices {
     const usersWithCardCount: any = await Promise.all(
       users.map(async (user) => {
         const cardCount = await CardModel.countDocuments({
-          user_id: user._id.toString(),
+          user_id: user._id,
         });
 
         return {
@@ -127,14 +127,14 @@ export class AdminService implements IAdminServices {
   async getAllCards(): Promise<AdminCardDTO[]> {
     const cards = await CardModel.find().sort({ created_at: -1 }).lean();
 
-    const cardsWithUserInfo = await Promise.all(
+    const cardsWithUserInfo: any = await Promise.all(
       cards.map(async (card) => {
         const user = await UserModel.findOne({
           _id: card.user_id,
         }).lean();
 
         return {
-          id: card._id.toString(),
+          id: card._id,
           name: card.title,
           title: card.title,
           company: card.company || "",

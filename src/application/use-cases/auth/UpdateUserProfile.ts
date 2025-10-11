@@ -13,17 +13,6 @@ export class UpdateUserProfileUseCase {
   constructor(private userRepository: IUserRepository) {}
 
   async execute(userId: string, data: UpdateUserProfileDTO): Promise<User> {
-    // Validate that at least one field is being updated
-
-    if (
-      !data.first_name &&
-      !data.last_name &&
-      data.phone === undefined &&
-      data.avatar_url === undefined
-    ) {
-      throw new AppError("No fields to update", 400);
-    }
-
     // Find the user
     const user = await this.userRepository.findById(userId);
 

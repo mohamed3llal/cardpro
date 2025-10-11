@@ -1,12 +1,10 @@
-// src/application/use-cases/card/GetUserCards.ts
-
-import { Card } from "../../../domain/entities/Card";
+import { Card } from "@domain/entities/Card";
 import {
   ICardRepository,
   PaginationOptions,
   CardFilters,
   PaginatedResult,
-} from "../../../domain/interfaces/ICardRepository";
+} from "@domain/interfaces/ICardRepository";
 
 export interface GetUserCardsDTO {
   user_id: string;
@@ -43,7 +41,19 @@ export class GetUserCardsUseCase {
         filters
       );
 
-      return result;
+      const total = await this.cardRepository.count(filters);
+
+      return {
+        data: result,
+        pagination: {
+          current_page: options.page,
+          total_pages: Math.ceil(total / options.limit),
+          total_items: total,
+          limit: options.limit,
+          has_next: options.page < Math.ceil(total / options.limit),
+          has_prev: options.page > 1,
+        },
+      };
     } catch (error: any) {
       throw new Error(`Failed to retrieve user cards: ${error.message}`);
     }

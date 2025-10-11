@@ -14,6 +14,12 @@ export interface UserProps {
   createdAt?: Date;
   updatedAt?: Date;
   fullName?: string; // Add this for compatibility with service
+  domainKey?: string;
+  subcategoryKey?: string;
+  domainDocumentUrl?: string;
+  verificationStatus?: string;
+  domainVerified?: boolean;
+  verificationNotes?: string;
 }
 
 export enum UserRole {

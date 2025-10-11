@@ -1,6 +1,4 @@
-// src/application/use-cases/card/DeleteCard.ts
-
-import { ICardRepository } from "../../../domain/interfaces/ICardRepository";
+import { ICardRepository } from "@domain/interfaces/ICardRepository";
 
 export interface DeleteCardDTO {
   card_id: string;

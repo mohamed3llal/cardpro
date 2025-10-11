@@ -13,7 +13,10 @@ import { AuthController } from "@presentation/controllers/AuthController";
 import { UserController } from "@presentation/controllers/UserController";
 import { DomainController } from "@presentation/controllers/DomainController";
 import { createDomainRoutes } from "./domainRoutes";
-import { createBusinessesRoutes } from "./businessesRoutes";
+import { createBusinessRoutes } from "./businessesRoutes";
+import { BusinessController } from "@presentation/controllers/BusinessController";
+import { createVerificationRoutes } from "./verificationRoutes";
+import { VerificationController } from "../controllers/VerificationController";
 
 export const createRoutes = (
   cardController: CardController,
@@ -22,7 +25,9 @@ export const createRoutes = (
   userController: UserController,
   authService: IAuthService,
   domainController: DomainController,
-  adminController: AdminController
+  adminController: AdminController,
+  businessController: BusinessController,
+  verificationController: VerificationController
 ): Router => {
   const router = Router();
 
@@ -38,7 +43,7 @@ export const createRoutes = (
   // Business routes
   router.use(
     "/businesses",
-    createBusinessesRoutes(cardController, authService)
+    createBusinessRoutes(businessController, authService)
   );
 
   // Dashboard routes
@@ -54,6 +59,18 @@ export const createRoutes = (
   router.use(
     "/admin",
     createAdminRoutes(adminController, domainController, authService)
+  );
+
+  // Business
+  router.use(
+    "/businesses",
+    createBusinessRoutes(businessController, authService)
+  );
+
+  // Verification routes
+  router.use(
+    "/verifications",
+    createVerificationRoutes(verificationController, authService)
   );
 
   return router;

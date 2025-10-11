@@ -1,98 +1,166 @@
-import { Request, Response, NextFunction } from "express";
+// src/presentation/controllers/UserController.ts (Add these methods)
+import { Response, NextFunction } from "express";
 import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
-import { GetCurrentUserUseCase } from "@application/use-cases/auth/GetCurrentUser";
-import { UpdateUserProfileUseCase } from "@application/use-cases/auth/UpdateUserProfile";
+import { IUserRepository } from "@domain/interfaces/IUserRepository";
 import { logger } from "@config/logger";
+import { UpdateUserProfileUseCase } from "@application/use-cases/auth/UpdateUserProfile";
+import { GetCurrentUserUseCase } from "@application/use-cases/auth/GetCurrentUser";
 
 export class UserController {
   constructor(
-    private getCurrentUserUseCase: GetCurrentUserUseCase,
-    private updateUserProfileUseCase: UpdateUserProfileUseCase
+    private readonly userRepository: IUserRepository,
+    private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
+    private readonly updateUserProfileUseCase: UpdateUserProfileUseCase
   ) {}
 
-  getCurrentUser = async (
+  // ... existing methods ...
+
+  /**
+   * PUT /api/v1/user/profile
+   * Update user profile (including domain selection)
+   */
+  async updateProfile(
     req: AuthRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ): Promise<void> {
     try {
       const userId = req.userId;
       if (!userId) {
-        return next(new Error("User ID not found in request"));
+        res.status(401).json({
+          error: "Unauthorized",
+          message: "User not authenticated",
+        });
+        return;
       }
-      const user = await this.getCurrentUserUseCase.execute(userId);
-      if (!user) {
-        return next(new Error("User not found"));
+      console.log(req.body);
+      const updateData: any = {};
+
+      // Basic profile fields
+      if (req.body.firstName) updateData.firstName = req.body.firstName;
+      if (req.body.lastName) updateData.lastName = req.body.lastName;
+      if (req.body.phone) updateData.phone = req.body.phone;
+      if (req.body.avatar) updateData.avatar = req.body.avatar;
+
+      // Domain selection fields
+      if (req.body.domain_key) {
+        updateData.domainKey = req.body.domain_key;
+      }
+      if (req.body.subcategory_key) {
+        updateData.subcategoryKey = req.body.subcategory_key;
       }
 
-      res.status(200).json({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        fullName: user.fullName,
-        phone: user.phone,
-        avatar: user.avatar,
-        role: user.role,
-        isActive: user.isActive,
-        lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
+      logger.info(`Updating profile for user: ${userId}`);
 
-  updateProfile = async (
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    try {
-      const userId = req.userId;
-      if (!userId) {
-        return next(new Error("User ID not found in request"));
-      }
-      const user = await this.updateUserProfileUseCase.execute(
+      console.log("updateData:", updateData);
+
+      const updatedUser: any = await this.updateUserProfileUseCase.execute(
         userId,
-        req.body
+        updateData
       );
 
       res.status(200).json({
         success: true,
-        data: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: user.fullName,
-          avatar: user.avatar,
-          bio: user.bio,
-          phone: user.phone,
-          city: user.city,
-          updatedAt: user.updatedAt,
+        user: {
+          id: updatedUser._id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          fullName: `${updatedUser.firstName} ${updatedUser.lastName}`,
+          phone: updatedUser.phone,
+          avatar: updatedUser.avatar,
+          role: updatedUser.role,
+          domainKey: updatedUser.domainKey,
+          subcategoryKey: updatedUser.subcategoryKey,
+          verificationStatus: updatedUser.verificationStatus || "none",
+          domainVerified: updatedUser.domainVerified || false,
+          domainDocumentUrl: updatedUser.domainDocumentUrl,
         },
       });
     } catch (error) {
-      next(error);
+      logger.error("Error updating profile:", error);
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Failed to update profile",
+      });
     }
-  };
+  }
 
-  logout = async (
+  /**
+   * GET /api/v1/user/profile
+   * Get user profile
+   */
+  async getProfile(
     req: AuthRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ): Promise<void> {
     try {
       const userId = req.userId;
       if (!userId) {
-        return next(new Error("User ID not found in request"));
+        res.status(401).json({
+          error: "Unauthorized",
+          message: "User not authenticated",
+        });
+        return;
       }
-      logger.info(`User logged out: ${userId}`);
-      res.status(200).json({ message: "Logged out successfully" });
+
+      const user: any = await this.userRepository.findById(userId);
+      if (!user) {
+        res.status(404).json({
+          error: "NOT_FOUND",
+          message: "User not found",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        user: {
+          id: user._id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: `${user.firstName} ${user.lastName}`,
+          phone: user.phone,
+          avatar: user.avatar,
+          role: user.role,
+          domainKey: user.domainKey,
+          subcategoryKey: user.subcategoryKey,
+          domainVerified: user.domainVerified || false,
+          domainDocumentUrl: user.domainDocumentUrl,
+          verificationStatus: user.verificationStatus || "none",
+          verificationNotes: user.verificationNotes,
+          createdAt: user.createdAt?.toISOString(),
+          updatedAt: user.updatedAt?.toISOString(),
+        },
+      });
     } catch (error) {
-      next(error);
+      logger.error("Error getting profile:", error);
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Failed to get profile",
+      });
     }
-  };
+  }
+
+  async getCurrentUser(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        res.status(401).json({
+          error: "Unauthorized",
+          message: "User not authenticated",
+        });
+        return;
+      }
+      const user = await this.getCurrentUserUseCase.execute(userId);
+      res.status(200).json(user);
+    } catch (error) {
+      logger.error("Error getting current user:", error);
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: "Failed to get current user",
+      });
+    }
+  }
 }

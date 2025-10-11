@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
+import { env } from "./env";
+
 import { CardRepository } from "@infrastructure/database/repositories/CardRepository";
 import { AnalyticsRepository } from "@infrastructure/database/repositories/AnalyticsRepository";
 import { UserRepository } from "@infrastructure/database/repositories/UserRepository";
@@ -36,9 +40,21 @@ import { DomainController } from "@presentation/controllers/DomainController";
 import { AdminService } from "@infrastructure/services/AdminService";
 import { AdminController } from "@presentation/controllers/AdminController";
 
-import { env } from "./env";
-import dotenv from "dotenv";
-dotenv.config();
+import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
+import { GetFeaturedBusinesses } from "@application/use-cases/business/GetFeaturedBusinesses";
+import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
+import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
+import { RecordView } from "@application/use-cases/business/RecordView";
+import { RecordScan } from "@application/use-cases/business/RecordScan";
+import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
+import { BusinessController } from "@presentation/controllers/BusinessController";
+
+import { SubmitDomainVerification } from "@application/use-cases/verification/SubmitDomainVerification";
+import { GetPendingVerifications } from "@application/use-cases/verification/GetPendingVerifications";
+import { GetAllVerifications } from "@application/use-cases/verification/GetAllVerifications";
+import { ApproveUserVerification } from "@application/use-cases/verification/ApproveUserVerification";
+import { RejectUserVerification } from "@application/use-cases/verification/RejectUserVerification";
+import { VerificationController } from "@presentation/controllers/VerificationController";
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -91,6 +107,27 @@ export class DIContainer {
   public readonly adminService: AdminService;
   public readonly adminController: AdminController;
 
+  // Business Use Cases
+  public readonly searchBusinessesUseCase: SearchBusinesses;
+  public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinesses;
+  public readonly getBusinessByIdUseCase: GetBusinessById;
+  public readonly getSimilarBusinessesUseCase: GetSimilarBusinesses;
+  public readonly recordViewUseCase: RecordView;
+  public readonly recordScanUseCase: RecordScan;
+  public readonly recordContactClickUseCase: RecordContactClick;
+  // Controllers
+  public readonly businessController: BusinessController;
+
+  // Verification Use Cases
+  public readonly submitDomainVerificationUseCase: SubmitDomainVerification;
+  public readonly getPendingVerificationsUseCase: GetPendingVerifications;
+  public readonly getAllVerificationsUseCase: GetAllVerifications;
+  public readonly approveUserVerificationUseCase: ApproveUserVerification;
+  public readonly rejectUserVerificationUseCase: RejectUserVerification;
+
+  // Controllers
+  public readonly verificationController: VerificationController;
+
   private constructor() {
     // Initialize Repositories
     this.cardRepository = new CardRepository();
@@ -116,6 +153,7 @@ export class DIContainer {
     this.toggleCardVisibilityUseCase = new ToggleCardVisibilityUseCase(
       this.cardRepository
     );
+
     this.getDashboardStatsUseCase = new GetDashboardStatsUseCase(
       this.analyticsRepository
     );
@@ -175,6 +213,7 @@ export class DIContainer {
     );
 
     this.userController = new UserController(
+      this.userRepository,
       this.getCurrentUserUseCase,
       this.updateUserProfileUseCase
     );
@@ -188,6 +227,57 @@ export class DIContainer {
       this.addSubcategoryUseCase,
       this.updateSubcategoryUseCase,
       this.deleteSubcategoryUseCase
+    );
+
+    // Initialize Business Use Cases
+    this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
+    this.getFeaturedBusinessesUseCase = new GetFeaturedBusinesses(
+      this.cardRepository
+    );
+    this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);
+    this.getSimilarBusinessesUseCase = new GetSimilarBusinesses(
+      this.cardRepository
+    );
+    this.recordViewUseCase = new RecordView(this.cardRepository);
+    this.recordScanUseCase = new RecordScan(this.cardRepository);
+    this.recordContactClickUseCase = new RecordContactClick(
+      this.cardRepository
+    );
+
+    // Initialize Business Controller
+    this.businessController = new BusinessController(
+      this.searchBusinessesUseCase,
+      this.getFeaturedBusinessesUseCase,
+      this.getBusinessByIdUseCase,
+      this.getSimilarBusinessesUseCase,
+      this.recordViewUseCase,
+      this.recordScanUseCase,
+      this.recordContactClickUseCase
+    );
+
+    // Initialize Verification Use Cases
+    this.submitDomainVerificationUseCase = new SubmitDomainVerification(
+      this.userRepository
+    );
+    this.getPendingVerificationsUseCase = new GetPendingVerifications(
+      this.userRepository
+    );
+    this.getAllVerificationsUseCase = new GetAllVerifications(
+      this.userRepository
+    );
+    this.approveUserVerificationUseCase = new ApproveUserVerification(
+      this.userRepository
+    );
+    this.rejectUserVerificationUseCase = new RejectUserVerification(
+      this.userRepository
+    );
+    // Initialize Verification Controller
+    this.verificationController = new VerificationController(
+      this.submitDomainVerificationUseCase,
+      this.getPendingVerificationsUseCase,
+      this.getAllVerificationsUseCase,
+      this.approveUserVerificationUseCase,
+      this.rejectUserVerificationUseCase
     );
   }
 

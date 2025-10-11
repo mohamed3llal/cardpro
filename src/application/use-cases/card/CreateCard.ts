@@ -1,7 +1,7 @@
 // src/application/use-cases/card/CreateCard.ts
 
-import { Card, CardProps } from "../../../domain/entities/Card";
-import { ICardRepository } from "../../../domain/interfaces/ICardRepository";
+import { Card, CardProps } from "@domain/entities/Card";
+import { ICardRepository } from "@domain/interfaces/ICardRepository";
 
 export interface CreateCardDTO {
   user_id: string;
