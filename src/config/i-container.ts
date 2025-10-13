@@ -40,14 +40,14 @@ import { DomainController } from "@presentation/controllers/DomainController";
 import { AdminService } from "@infrastructure/services/AdminService";
 import { AdminController } from "@presentation/controllers/AdminController";
 
-import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
-import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
-import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
-import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
-import { RecordView } from "@application/use-cases/business/RecordView";
-import { RecordScan } from "@application/use-cases/business/RecordScan";
-import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
-import { BusinessController } from "@presentation/controllers/BusinessController";
+// import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
+// import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
+// import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
+// import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
+// import { RecordView } from "@application/use-cases/business/RecordView";
+// import { RecordScan } from "@application/use-cases/business/RecordScan";
+// import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
+// import { BusinessController } from "@presentation/controllers/BusinessController";
 
 import { SubmitDomainVerification } from "@application/use-cases/verification/SubmitDomainVerification";
 import { GetPendingVerifications } from "@application/use-cases/verification/GetPendingVerifications";
@@ -114,15 +114,15 @@ export class DIContainer {
   public readonly adminController: AdminController;
 
   // Business Use Cases
-  public readonly searchBusinessesUseCase: SearchBusinesses;
-  public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase;
-  public readonly getBusinessByIdUseCase: GetBusinessById;
-  public readonly getSimilarBusinessesUseCase: GetSimilarBusinesses;
-  public readonly recordViewUseCase: RecordView;
-  public readonly recordScanUseCase: RecordScan;
-  public readonly recordContactClickUseCase: RecordContactClick;
-  // Controllers
-  public readonly businessController: BusinessController;
+  // public readonly searchBusinessesUseCase: SearchBusinesses;
+  // public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase;
+  // public readonly getBusinessByIdUseCase: GetBusinessById;
+  // public readonly getSimilarBusinessesUseCase: GetSimilarBusinesses;
+  // public readonly recordViewUseCase: RecordView;
+  // public readonly recordScanUseCase: RecordScan;
+  // public readonly recordContactClickUseCase: RecordContactClick;
+  // // Controllers
+  // public readonly businessController: BusinessController;
 
   // Verification Use Cases
   public readonly submitDomainVerificationUseCase: SubmitDomainVerification;
@@ -253,30 +253,30 @@ export class DIContainer {
     );
 
     // Initialize Business Use Cases
-    this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
-    this.getFeaturedBusinessesUseCase = new GetFeaturedBusinessesUseCase(
-      this.cardRepository
-    );
-    this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);
-    this.getSimilarBusinessesUseCase = new GetSimilarBusinesses(
-      this.cardRepository
-    );
-    this.recordViewUseCase = new RecordView(this.cardRepository);
-    this.recordScanUseCase = new RecordScan(this.cardRepository);
-    this.recordContactClickUseCase = new RecordContactClick(
-      this.cardRepository
-    );
+    // this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
+    // this.getFeaturedBusinessesUseCase = new GetFeaturedBusinessesUseCase(
+    //   this.cardRepository
+    // );
+    // this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);
+    // this.getSimilarBusinessesUseCase = new GetSimilarBusinesses(
+    //   this.cardRepository
+    // );
+    // this.recordViewUseCase = new RecordView(this.cardRepository);
+    // this.recordScanUseCase = new RecordScan(this.cardRepository);
+    // this.recordContactClickUseCase = new RecordContactClick(
+    //   this.cardRepository
+    // );
 
-    // Initialize Business Controller
-    this.businessController = new BusinessController(
-      this.searchBusinessesUseCase,
-      this.getFeaturedBusinessesUseCase,
-      this.getBusinessByIdUseCase,
-      this.getSimilarBusinessesUseCase,
-      this.recordViewUseCase,
-      this.recordScanUseCase,
-      this.recordContactClickUseCase
-    );
+    // // Initialize Business Controller
+    // this.businessController = new BusinessController(
+    //   this.searchBusinessesUseCase,
+    //   this.getFeaturedBusinessesUseCase,
+    //   this.getBusinessByIdUseCase,
+    //   this.getSimilarBusinessesUseCase,
+    //   this.recordViewUseCase,
+    //   this.recordScanUseCase,
+    //   this.recordContactClickUseCase
+    // );
 
     // Initialize Verification Use Cases
     this.submitDomainVerificationUseCase = new SubmitDomainVerification(
