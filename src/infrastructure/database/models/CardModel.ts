@@ -111,11 +111,6 @@ const CardSchema = new Schema<ICardDocument>(
       default: true,
       index: true,
     },
-    verified: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
     scans: {
       type: Number,
       default: 0,

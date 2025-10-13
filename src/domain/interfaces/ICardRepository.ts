@@ -11,7 +11,7 @@ export interface CardFilters {
   user_id?: string;
   is_public?: boolean;
   domain_key?: string;
-  subdomain_key?: string[];
+  subdomain_key?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -36,8 +36,12 @@ export interface ICardRepository {
   incrementViews(id: string): Promise<void>;
   incrementScans(id: string): Promise<void>;
 
+  findActiveVerifiedUserCards(
+    query: any,
+    options?: FindOptions
+  ): Promise<Card[]>;
   findOne(query: any): Promise<Card | null>;
-  find(query: any, options?: FindOptions): Promise<Card[]>;
+  find(query: any, verified?: boolean, options?: FindOptions): Promise<Card[]>;
 
   // Search & Filter
   search(query: any, skip: number, limit: number): Promise<Card[]>;
@@ -73,6 +77,9 @@ export interface ICardRepository {
     radius: number,
     limit?: number
   ): Promise<Card[]>;
+
+  // Add this method for aggregation support
+  aggregate(pipeline: any[]): Promise<any[]>;
 }
 
 export interface FindOptions {

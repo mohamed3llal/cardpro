@@ -10,13 +10,15 @@ export const createAnalyticsRoutes = (
   const router = Router();
   const auth = authMiddleware(authService);
 
-  router.get("/stats", auth, analyticsController.getDashboardStats);
+  router.get("/cards/stats", auth, analyticsController.getDashboardStats);
+
   router.get(
     "/cards/:cardId/analytics",
     auth,
     analyticsController.getCardAnalytics
   );
-  router.get("/activity", auth, analyticsController.getRecentActivity);
+
+  router.get("/cards/activity", auth, analyticsController.getRecentActivity);
 
   return router;
 };

@@ -9,7 +9,8 @@ export interface UpdateCardDTO {
   title?: string;
   company?: string;
   domain_key?: string;
-  subdomain_key?: string[];
+  subdomain_key?: string;
+  subdomain?: string;
   description?: string;
   mobile_phones?: string[];
   landline_phones?: string[];
@@ -62,7 +63,7 @@ export class UpdateCardUseCase {
       if (dto.company !== undefined) updates.company = dto.company;
       if (dto.domain_key !== undefined) updates.domain_key = dto.domain_key;
       if (dto.subdomain_key !== undefined)
-        updates.subdomain_key = dto.subdomain_key;
+        updates.subdomain_key = dto.subdomain_key || dto.subdomain;
       if (dto.description !== undefined) updates.description = dto.description;
       if (dto.mobile_phones !== undefined)
         updates.mobile_phones = dto.mobile_phones;

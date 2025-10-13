@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
-import { GetCurrentUserUseCase } from "@application/use-cases/auth/GetCurrentUser";
-import { UpdateUserProfileUseCase } from "@application/use-cases/auth/UpdateUserProfile";
+import { GetCurrentUser } from "@application/use-cases/user/GetCurrentUser";
+import { UpdateUserProfile } from "@application/use-cases/user/UpdateUserProfile";
 import { GoogleAuthUseCase } from "@application/use-cases/auth/GoogleAuth";
 import { RefreshTokenUseCase } from "@application/use-cases/auth/RefreshToken";
 import { logger } from "@config/logger";
 
 export class AuthController {
   constructor(
-    private getCurrentUserUseCase: GetCurrentUserUseCase,
-    private updateUserProfileUseCase: UpdateUserProfileUseCase,
+    private getCurrentUserUseCase: GetCurrentUser,
+    private updateUserProfileUseCase: UpdateUserProfile,
     private googleAuthUseCase: GoogleAuthUseCase,
     private refreshTokenUseCase: RefreshTokenUseCase
   ) {}
@@ -119,7 +119,7 @@ export class AuthController {
       );
       res.status(200).json({
         message: "Profile updated successfully",
-        user: user.toPublicJSON ? user.toPublicJSON() : user,
+        user: user,
       });
     } catch (error) {
       next(error);

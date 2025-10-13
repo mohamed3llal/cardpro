@@ -18,7 +18,7 @@ export class GetAllVerifications {
     }
 
     return users.map((user: any) => ({
-      user_id: user._id.toString(),
+      user_id: user.id,
       user_name: `${user.firstName} ${user.lastName}`,
       user_email: user.email,
       domain_key: user.domainKey || "",

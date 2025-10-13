@@ -1,3 +1,17 @@
+export enum UserRole {
+  USER = "user",
+  ADMIN = "admin",
+  MODERATOR = "moderator",
+  SUPER_ADMIN = "super_admin",
+}
+
+export enum VerificationStatus {
+  NONE = "none",
+  PENDING = "pending",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+}
+
 export interface UserProps {
   id?: string;
   email: string;
@@ -9,42 +23,46 @@ export interface UserProps {
   bio?: string;
   city?: string;
   isActive: boolean;
+  isAdmin: boolean;
   lastLoginAt?: Date;
-  isAdmin?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  fullName?: string; // Add this for compatibility with service
+
+  // Domain verification fields
   domainKey?: string;
   subcategoryKey?: string;
   domainDocumentUrl?: string;
-  verificationStatus?: string;
-  domainVerified?: boolean;
+  verificationStatus: VerificationStatus;
+  domainVerified: boolean;
   verificationNotes?: string;
-}
 
-export enum UserRole {
-  USER = "user",
-  ADMIN = "admin",
-  MODERATOR = "moderator",
-  SUPER_ADMIN = "super_admin",
+  // Timestamps
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class User {
   private props: UserProps;
 
   constructor(props: UserProps) {
-    this.props = props;
+    this.props = {
+      ...props,
+      isActive: props.isActive ?? true,
+      isAdmin: props.isAdmin ?? false,
+      verificationStatus: props.verificationStatus ?? VerificationStatus.NONE,
+      domainVerified: props.domainVerified ?? false,
+      createdAt: props.createdAt ?? new Date(),
+      updatedAt: props.updatedAt ?? new Date(),
+    };
     this.validate();
   }
 
   private validate(): void {
-    // Validate email
+    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(this.props.email)) {
       throw new Error("Invalid email format");
     }
 
-    // Validate name
+    // Name validation
     if (!this.props.firstName || this.props.firstName.trim().length < 2) {
       throw new Error("First name must be at least 2 characters long");
     }
@@ -53,12 +71,21 @@ export class User {
       throw new Error("Last name must be at least 2 characters long");
     }
 
-    // Validate phone if provided
+    // Phone validation if provided
     if (this.props.phone) {
       const phoneRegex = /^\+?[\d\s\-()]+$/;
       if (!phoneRegex.test(this.props.phone)) {
         throw new Error("Invalid phone format");
       }
+    }
+
+    // Domain verification validation
+    if (this.props.domainKey && !this.props.subcategoryKey) {
+      throw new Error("Subcategory is required when domain is set");
+    }
+
+    if (this.props.subcategoryKey && !this.props.domainKey) {
+      throw new Error("Domain is required when subcategory is set");
     }
   }
 
@@ -80,9 +107,7 @@ export class User {
   }
 
   get fullName(): string {
-    return (
-      this.props.fullName || `${this.props.firstName} ${this.props.lastName}`
-    );
+    return `${this.props.firstName} ${this.props.lastName}`;
   }
 
   get phone(): string | undefined {
@@ -101,16 +126,24 @@ export class User {
     return this.props.isActive;
   }
 
+  get isAdmin(): boolean {
+    return (
+      this.props.isAdmin ||
+      this.props.role === UserRole.ADMIN ||
+      this.props.role === UserRole.SUPER_ADMIN
+    );
+  }
+
+  get isSuperAdmin(): boolean {
+    return this.props.role === UserRole.SUPER_ADMIN;
+  }
+
+  get isModerator(): boolean {
+    return this.props.role === UserRole.MODERATOR;
+  }
+
   get lastLoginAt(): Date | undefined {
     return this.props.lastLoginAt;
-  }
-
-  get createdAt(): Date | undefined {
-    return this.props.createdAt;
-  }
-
-  get updatedAt(): Date | undefined {
-    return this.props.updatedAt;
   }
 
   get bio(): string | undefined {
@@ -121,13 +154,41 @@ export class User {
     return this.props.city;
   }
 
-  updateLastLogin(): void {
-    this.props.lastLoginAt = new Date();
-    this.props.updatedAt = new Date();
+  get domainKey(): string | undefined {
+    return this.props.domainKey;
   }
 
-  deactivate(): void {
-    this.props.isActive = false;
+  get subcategoryKey(): string | undefined {
+    return this.props.subcategoryKey;
+  }
+
+  get domainDocumentUrl(): string | undefined {
+    return this.props.domainDocumentUrl;
+  }
+
+  get verificationStatus(): VerificationStatus {
+    return this.props.verificationStatus;
+  }
+
+  get domainVerified(): boolean {
+    return this.props.domainVerified;
+  }
+
+  get verificationNotes(): string | undefined {
+    return this.props.verificationNotes;
+  }
+
+  get createdAt(): Date | undefined {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date | undefined {
+    return this.props.updatedAt;
+  }
+
+  // Business methods
+  updateLastLogin(): void {
+    this.props.lastLoginAt = new Date();
     this.props.updatedAt = new Date();
   }
 
@@ -136,65 +197,155 @@ export class User {
     this.props.updatedAt = new Date();
   }
 
-  updateAvatar(newAvatar: string): void {
-    this.props.avatar = newAvatar;
+  deactivate(): void {
+    this.props.isActive = false;
+    this.props.updatedAt = new Date();
+  }
+
+  changeRole(newRole: UserRole): void {
+    this.props.role = newRole;
+    this.props.isAdmin =
+      newRole === UserRole.ADMIN || newRole === UserRole.SUPER_ADMIN;
+    this.props.updatedAt = new Date();
   }
 
   updateProfile(data: {
-    first_name?: string;
-    last_name?: string;
+    firstName?: string;
+    lastName?: string;
     phone?: string;
-    avatar_url?: string;
+    avatar?: string;
+    bio?: string;
+    city?: string;
   }): void {
-    if (data.first_name) {
-      if (data.first_name.trim().length < 2) {
+    if (data.firstName !== undefined) {
+      if (data.firstName.trim().length < 2) {
         throw new Error("First name must be at least 2 characters long");
       }
-      this.props.firstName = data.first_name;
+      this.props.firstName = data.firstName.trim();
     }
 
-    if (data.last_name) {
-      if (data.last_name.trim().length < 2) {
+    if (data.lastName !== undefined) {
+      if (data.lastName.trim().length < 2) {
         throw new Error("Last name must be at least 2 characters long");
       }
-      this.props.lastName = data.last_name;
+      this.props.lastName = data.lastName.trim();
     }
 
     if (data.phone !== undefined) {
       if (data.phone && !/^\+?[\d\s\-()]+$/.test(data.phone)) {
         throw new Error("Invalid phone format");
       }
-      this.props.phone = data.phone;
+      this.props.phone = data.phone || undefined;
     }
 
-    if (data.avatar_url !== undefined) {
-      this.props.avatar = data.avatar_url;
+    if (data.avatar !== undefined) {
+      this.props.avatar = data.avatar || undefined;
+    }
+
+    if (data.bio !== undefined) {
+      this.props.bio = data.bio || undefined;
+    }
+
+    if (data.city !== undefined) {
+      this.props.city = data.city || undefined;
     }
 
     this.props.updatedAt = new Date();
   }
 
-  changeRole(newRole: UserRole): void {
-    this.props.role = newRole;
+  setDomainInfo(domainKey: string, subcategoryKey: string): void {
+    if (!domainKey || !subcategoryKey) {
+      throw new Error("Both domain and subcategory are required");
+    }
+
+    this.props.domainKey = domainKey;
+    this.props.subcategoryKey = subcategoryKey;
     this.props.updatedAt = new Date();
   }
 
-  isAdmin(): boolean {
-    return this.props.isAdmin === true;
+  submitVerification(documentUrl: string): void {
+    if (!this.props.domainKey || !this.props.subcategoryKey) {
+      throw new Error(
+        "Domain and subcategory must be set before submitting verification"
+      );
+    }
+
+    if (!documentUrl || !documentUrl.includes("cloudinary.com")) {
+      throw new Error("Valid document URL is required");
+    }
+
+    if (this.props.verificationStatus === VerificationStatus.PENDING) {
+      throw new Error("Verification already pending");
+    }
+
+    if (
+      this.props.verificationStatus === VerificationStatus.APPROVED &&
+      this.props.domainVerified
+    ) {
+      throw new Error("Domain already verified");
+    }
+
+    this.props.domainDocumentUrl = documentUrl;
+    this.props.verificationStatus = VerificationStatus.PENDING;
+    this.props.domainVerified = false;
+    this.props.verificationNotes = undefined;
+    this.props.updatedAt = new Date();
   }
 
-  isModerator(): boolean {
-    return this.props.role === UserRole.MODERATOR;
+  approveVerification(notes?: string): void {
+    if (this.props.verificationStatus !== VerificationStatus.PENDING) {
+      throw new Error("No pending verification to approve");
+    }
+
+    this.props.verificationStatus = VerificationStatus.APPROVED;
+    this.props.domainVerified = true;
+    this.props.verificationNotes = notes || "Verification approved";
+    this.props.updatedAt = new Date();
   }
 
+  rejectVerification(notes: string): void {
+    if (!notes || notes.trim().length === 0) {
+      throw new Error("Rejection notes are required");
+    }
+
+    if (this.props.verificationStatus !== VerificationStatus.PENDING) {
+      throw new Error("No pending verification to reject");
+    }
+
+    this.props.verificationStatus = VerificationStatus.REJECTED;
+    this.props.domainVerified = false;
+    this.props.verificationNotes = notes;
+    this.props.updatedAt = new Date();
+  }
+
+  canSubmitVerification(): boolean {
+    return (
+      !!this.props.domainKey &&
+      !!this.props.subcategoryKey &&
+      this.props.verificationStatus !== VerificationStatus.PENDING &&
+      !(
+        this.props.verificationStatus === VerificationStatus.APPROVED &&
+        this.props.domainVerified
+      )
+    );
+  }
+
+  hasPendingVerification(): boolean {
+    return this.props.verificationStatus === VerificationStatus.PENDING;
+  }
+
+  isVerified(): boolean {
+    return (
+      this.props.verificationStatus === VerificationStatus.APPROVED &&
+      this.props.domainVerified
+    );
+  }
+
+  // Serialization
   toJSON(): UserProps {
-    return {
-      ...this.props,
-      fullName: this.fullName,
-    };
+    return { ...this.props };
   }
 
-  // Return user data without sensitive information
   toPublicJSON() {
     return {
       id: this.id,
@@ -205,10 +356,57 @@ export class User {
       phone: this.phone,
       avatar: this.avatar,
       role: this.role,
+      bio: this.bio,
+      city: this.city,
       isActive: this.isActive,
+      domainKey: this.domainKey,
+      subcategoryKey: this.subcategoryKey,
+      verificationStatus: this.verificationStatus,
+      domainVerified: this.domainVerified,
       lastLoginAt: this.lastLoginAt?.toISOString(),
       createdAt: this.createdAt?.toISOString(),
       updatedAt: this.updatedAt?.toISOString(),
     };
+  }
+
+  toAdminJSON() {
+    return {
+      ...this.toPublicJSON(),
+      isAdmin: this.isAdmin,
+      domainDocumentUrl: this.domainDocumentUrl,
+      verificationNotes: this.verificationNotes,
+    };
+  }
+
+  // Factory method
+  static create(props: UserProps): User {
+    return new User(props);
+  }
+
+  static fromPersistence(data: any): User {
+    return new User({
+      id: data._id,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      avatar: data.avatar,
+      role: data.role as UserRole,
+      bio: data.bio,
+      city: data.city,
+      isActive: data.isActive,
+      isAdmin: data.isAdmin,
+      lastLoginAt: data.lastLoginAt,
+      domainKey: data.domainKey,
+      subcategoryKey: data.subcategoryKey,
+      domainDocumentUrl: data.domainDocumentUrl,
+      verificationStatus:
+        (data.verificationStatus as VerificationStatus) ||
+        VerificationStatus.NONE,
+      domainVerified: data.domainVerified || false,
+      verificationNotes: data.verificationNotes,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    });
   }
 }

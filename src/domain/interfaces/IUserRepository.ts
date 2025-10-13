@@ -10,10 +10,11 @@ export interface IUserRepository {
   exists(email: string): Promise<boolean>;
   findAll(query?: any): Promise<User[]>;
 
+  findByDomain(domainky: string): Promise<User[]>;
   // Verification queries
   findByVerificationStatus(status: VerificationStatus): Promise<User[]>;
   findWithVerification(): Promise<User[]>;
-
+  findVerifiedUserIds(): Promise<string[]>;
   // Query methods
   count(query?: any): Promise<number>;
 }

@@ -8,7 +8,8 @@ export interface CreateCardDTO {
   title: string;
   company?: string;
   domain_key: string;
-  subdomain_key?: string[];
+  subdomain_key?: string;
+  subdomain?: string;
   description?: string;
   mobile_phones?: string[];
   landline_phones?: string[];
@@ -44,7 +45,7 @@ export class CreateCardUseCase {
         title: dto.title,
         company: dto.company,
         domain_key: dto.domain_key,
-        subdomain_key: dto.subdomain_key,
+        subdomain_key: dto.subdomain_key || dto.subdomain,
         description: dto.description,
         mobile_phones: dto.mobile_phones,
         landline_phones: dto.landline_phones,
@@ -57,12 +58,11 @@ export class CreateCardUseCase {
         tags: dto.tags,
         social_links: dto.social_links,
         location: dto.location,
-        is_public: dto.is_public,
+        is_public: dto.is_public !== undefined ? dto.is_public : true,
       };
 
       const card = Card.create(cardProps);
 
-      // Persist the card
       const createdCard = await this.cardRepository.create(card);
 
       return createdCard;

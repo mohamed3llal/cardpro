@@ -6,6 +6,7 @@ import { UpdateCardUseCase } from "../../application/use-cases/card/UpdateCard";
 import { DeleteCardUseCase } from "../../application/use-cases/card/DeleteCard";
 import { ToggleCardVisibilityUseCase } from "../../application/use-cases/card/ToggleCardVisibility";
 import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
+import { ConnectionStates } from "mongoose";
 
 export class CardController {
   constructor(
@@ -35,6 +36,7 @@ export class CardController {
         });
         return;
       }
+
       const card = await this.createCardUseCase.execute({
         user_id: userId,
         ...req.body,
@@ -104,7 +106,7 @@ export class CardController {
             ? false
             : undefined,
         domain_key: domain_key as string,
-        subdomain_key: subdomain_key as string[],
+        subdomain_key: subdomain_key as string,
       });
 
       res.status(200).json({

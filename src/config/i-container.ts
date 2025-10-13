@@ -18,8 +18,8 @@ import { ToggleCardVisibilityUseCase } from "@application/use-cases/card/ToggleC
 import { GetDashboardStatsUseCase } from "@application/use-cases/analytics/GetDashboardStats";
 import { GoogleAuthUseCase } from "@application/use-cases/auth/GoogleAuth";
 import { RefreshTokenUseCase } from "@application/use-cases/auth/RefreshToken";
-import { GetCurrentUserUseCase } from "@application/use-cases/auth/GetCurrentUser";
-import { UpdateUserProfileUseCase } from "@application/use-cases/auth/UpdateUserProfile";
+import { GetCurrentUser } from "@application/use-cases/user/GetCurrentUser";
+import { UpdateUserProfile } from "@application/use-cases/user/UpdateUserProfile";
 
 import { CardController } from "@presentation/controllers/CardController";
 import { AnalyticsController } from "@presentation/controllers/AnalyticsController";
@@ -41,7 +41,7 @@ import { AdminService } from "@infrastructure/services/AdminService";
 import { AdminController } from "@presentation/controllers/AdminController";
 
 import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
-import { GetFeaturedBusinesses } from "@application/use-cases/business/GetFeaturedBusinesses";
+import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
 import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
 import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
 import { RecordView } from "@application/use-cases/business/RecordView";
@@ -55,6 +55,12 @@ import { GetAllVerifications } from "@application/use-cases/verification/GetAllV
 import { ApproveUserVerification } from "@application/use-cases/verification/ApproveUserVerification";
 import { RejectUserVerification } from "@application/use-cases/verification/RejectUserVerification";
 import { VerificationController } from "@presentation/controllers/VerificationController";
+
+// User Use Cases
+import { GetUserProfile } from "@application/use-cases/user/GetUserProfile";
+import { ToggleUserStatus } from "@application/use-cases/user/ToggleUserStatus";
+import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
+import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -80,8 +86,8 @@ export class DIContainer {
   // Auth Use Cases
   public readonly googleAuthUseCase: GoogleAuthUseCase;
   public readonly refreshTokenUseCase: RefreshTokenUseCase;
-  public readonly getCurrentUserUseCase: GetCurrentUserUseCase;
-  public readonly updateUserProfileUseCase: UpdateUserProfileUseCase;
+  public readonly getCurrentUserUseCase: GetCurrentUser;
+  public readonly updateUserProfileUseCase: UpdateUserProfile;
 
   // Domain Use Cases
   public readonly getAllDomainsUseCase: GetAllDomains;
@@ -109,7 +115,7 @@ export class DIContainer {
 
   // Business Use Cases
   public readonly searchBusinessesUseCase: SearchBusinesses;
-  public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinesses;
+  public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase;
   public readonly getBusinessByIdUseCase: GetBusinessById;
   public readonly getSimilarBusinessesUseCase: GetSimilarBusinesses;
   public readonly recordViewUseCase: RecordView;
@@ -127,6 +133,12 @@ export class DIContainer {
 
   // Controllers
   public readonly verificationController: VerificationController;
+
+  // User Use Cases
+  public readonly getUserProfileUseCase: GetUserProfile;
+  public readonly toggleUserStatusUseCase: ToggleUserStatus;
+  public readonly changeUserRoleUseCase: ChangeUserRole;
+  public readonly updateLastLoginUseCase: UpdateLastLogin;
 
   private constructor() {
     // Initialize Repositories
@@ -171,10 +183,8 @@ export class DIContainer {
       this.userRepository,
       this.authService
     );
-    this.getCurrentUserUseCase = new GetCurrentUserUseCase(this.userRepository);
-    this.updateUserProfileUseCase = new UpdateUserProfileUseCase(
-      this.userRepository
-    );
+    this.getCurrentUserUseCase = new GetCurrentUser(this.userRepository);
+    this.updateUserProfileUseCase = new UpdateUserProfile(this.userRepository);
 
     // Initialize Domain Use Cases
     this.getAllDomainsUseCase = new GetAllDomains(this.domainRepository);
@@ -212,10 +222,23 @@ export class DIContainer {
       this.refreshTokenUseCase
     );
 
+    // Initialize User Use Cases
+    this.getCurrentUserUseCase = new GetCurrentUser(this.userRepository);
+    this.updateUserProfileUseCase = new UpdateUserProfile(this.userRepository);
+    this.getUserProfileUseCase = new GetUserProfile(this.userRepository);
+    this.toggleUserStatusUseCase = new ToggleUserStatus(this.userRepository);
+    this.changeUserRoleUseCase = new ChangeUserRole(this.userRepository);
+    this.updateLastLoginUseCase = new UpdateLastLogin(this.userRepository);
+
+    // ... other use cases initialization ...
+
+    // Initialize User Controller
     this.userController = new UserController(
-      this.userRepository,
       this.getCurrentUserUseCase,
-      this.updateUserProfileUseCase
+      this.updateUserProfileUseCase,
+      this.getUserProfileUseCase,
+      this.toggleUserStatusUseCase,
+      this.changeUserRoleUseCase
     );
 
     this.domainController = new DomainController(
@@ -231,7 +254,7 @@ export class DIContainer {
 
     // Initialize Business Use Cases
     this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
-    this.getFeaturedBusinessesUseCase = new GetFeaturedBusinesses(
+    this.getFeaturedBusinessesUseCase = new GetFeaturedBusinessesUseCase(
       this.cardRepository
     );
     this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);

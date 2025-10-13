@@ -14,7 +14,7 @@ export interface GetUserCardsDTO {
   sort_order?: "asc" | "desc";
   is_public?: boolean;
   domain_key?: string;
-  subdomain_key?: string[];
+  subdomain_key?: string;
 }
 
 export class GetUserCardsUseCase {

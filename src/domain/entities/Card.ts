@@ -18,8 +18,9 @@ export interface CardProps {
   user_id: string;
   title: string;
   company?: string;
+  logo?: string; // ✅ ADD THIS
   domain_key: string;
-  subdomain_key?: string[];
+  subdomain_key?: string;
   description?: string;
   mobile_phones?: string[];
   landline_phones?: string[];
@@ -33,9 +34,24 @@ export interface CardProps {
   social_links?: SocialLinks;
   location?: Location;
   is_public?: boolean;
-  verified?: boolean;
   scans?: number;
   views?: number;
+
+  // ✅ ADD RATING SUPPORT (or remove from sorting)
+  rating?: {
+    average: number;
+    count: number;
+  };
+
+  user?: {
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+    email: string;
+    domainVerified: boolean;
+    domainKey: string;
+    subcategoryKey: string;
+  };
   created_at?: Date;
   updated_at?: Date;
 }
@@ -53,7 +69,6 @@ export class Card {
       languages: props.languages || [],
       tags: props.tags || [],
       is_public: props.is_public !== undefined ? props.is_public : true,
-      verified: props.verified || false,
       scans: props.scans || 0,
       views: props.views || 0,
       created_at: props.created_at || new Date(),
@@ -118,7 +133,7 @@ export class Card {
     return this.props.domain_key;
   }
 
-  get subdomainKey(): string[] | undefined {
+  get subdomainKey(): string | undefined {
     return this.props.subdomain_key;
   }
 
@@ -128,10 +143,6 @@ export class Card {
 
   get isPublic(): boolean {
     return this.props.is_public || true;
-  }
-
-  get verified(): boolean {
-    return this.props.verified || false;
   }
 
   get scans(): number {

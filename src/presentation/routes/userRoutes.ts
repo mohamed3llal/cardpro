@@ -4,9 +4,11 @@ import { validate } from "@infrastructure/middleware/validator";
 import { updateProfileSchema } from "../validators/authValidator";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
 import { UserController } from "@presentation/controllers/UserController";
+import { VerificationController } from "../controllers/VerificationController";
 
 export const createUserRoutes = (
   userController: UserController,
+  verificationController: VerificationController,
   authService: IAuthService
 ): Router => {
   const router = Router();
@@ -20,6 +22,10 @@ export const createUserRoutes = (
     auth,
     validate(updateProfileSchema),
     userController.updateProfile
+  );
+
+  router.post("/domain-verification", auth, (req, res, next) =>
+    verificationController.submitDomainVerification(req, res, next)
   );
 
   return router;

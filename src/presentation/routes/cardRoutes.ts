@@ -10,23 +10,21 @@ export const createCardRoutes = (
   const router = Router();
   const auth = authMiddleware(authService);
 
-  // POST /api/v1/cards - Create a new card
-  router.post("/", auth, cardController.createCard);
+  router.post("/cards", auth, cardController.createCard);
 
-  // GET /api/v1/cards - Get user's cards with pagination
-  router.get("/", auth, cardController.getUserCards);
+  router.get("/cards", auth, cardController.getUserCards);
 
-  // GET /api/v1/cards/:cardId - Get a specific card
-  router.get("/:cardId", auth, cardController.getCardById);
+  router.get("/cards/:cardId", auth, cardController.getCardById);
 
-  // PUT /api/v1/cards/:cardId - Update a card
-  router.put("/:cardId", auth, cardController.updateCard);
+  router.put("/cards/:cardId", auth, cardController.updateCard);
 
-  // DELETE /api/v1/cards/:cardId - Delete a card
-  router.delete("/:cardId", auth, cardController.deleteCard);
+  router.delete("/cards/:cardId", auth, cardController.deleteCard);
 
-  // PATCH /api/v1/cards/:cardId/visibility - Toggle card visibility
-  router.patch("/:cardId/visibility", auth, cardController.toggleVisibility);
+  router.patch(
+    "/cards/:cardId/visibility",
+    auth,
+    cardController.toggleVisibility
+  );
 
   return router;
 };

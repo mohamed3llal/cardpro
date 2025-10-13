@@ -44,7 +44,7 @@ export class GetSimilarBusinesses {
       };
     }
 
-    const similarBusinesses = await this.cardRepository.find(query, {
+    const similarBusinesses = await this.cardRepository.find(query, true, {
       sort: { "rating.average": -1, views: -1 },
       limit,
     });

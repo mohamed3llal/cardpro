@@ -1,7 +1,6 @@
 // src/presentation/controllers/BusinessController.ts
 import { Request, Response, NextFunction } from "express";
 import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
-import { GetFeaturedBusinesses } from "@application/use-cases/business/GetFeaturedBusinesses";
 import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
 import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
 import { RecordView } from "@application/use-cases/business/RecordView";
@@ -9,11 +8,13 @@ import { RecordScan } from "@application/use-cases/business/RecordScan";
 import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
 import { logger } from "@config/logger";
 import { BusinessSearchParams } from "@application/dtos/BusinessDTO";
+import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
+import { Console } from "console";
 
 export class BusinessController {
   constructor(
     private readonly searchBusinessesUseCase: SearchBusinesses,
-    private readonly getFeaturedBusinessesUseCase: GetFeaturedBusinesses,
+    private readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase,
     private readonly getBusinessByIdUseCase: GetBusinessById,
     private readonly getSimilarBusinessesUseCase: GetSimilarBusinesses,
     private readonly recordViewUseCase: RecordView,
@@ -98,7 +99,6 @@ export class BusinessController {
       logger.info("Searching businesses with params:", searchParams);
 
       const result = await this.searchBusinessesUseCase.execute(searchParams);
-
       res.status(200).json({
         businesses: result.businesses,
         pagination: result.pagination,
@@ -124,16 +124,38 @@ export class BusinessController {
     next: NextFunction
   ): Promise<void> {
     try {
-      logger.info("Fetching featured businesses");
+      // Extract location parameters from query
+      const latitude = req.query.latitude
+        ? parseFloat(req.query.latitude as string)
+        : undefined;
+      const longitude = req.query.longitude
+        ? parseFloat(req.query.longitude as string)
+        : undefined;
+      const radius = req.query.radius
+        ? parseFloat(req.query.radius as string)
+        : 10; // default 10km
 
-      const result = await this.getFeaturedBusinessesUseCase.execute();
-
-      res.status(200).json({
-        featured: result.featured,
-        categories: result.categories,
+      // Validate coordinates (both must be provided or neither)
+      if (
+        (latitude !== undefined && longitude === undefined) ||
+        (latitude === undefined && longitude !== undefined)
+      ) {
+        res.status(400).json({
+          error: "INVALID_PARAMETERS",
+          message: "Both latitude and longitude must be provided together",
+        });
+        return;
+      }
+      console.log(latitude, longitude, radius);
+      const result = await this.getFeaturedBusinessesUseCase.execute({
+        latitude,
+        longitude,
+        radius,
       });
+
+      console.log(JSON.stringify(result, null, 2));
+      res.status(200).json(result);
     } catch (error) {
-      logger.error("Error fetching featured businesses:", error);
       res.status(500).json({
         error: "INTERNAL_ERROR",
         message: "Failed to fetch featured businesses",

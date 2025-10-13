@@ -1,166 +1,237 @@
-// src/presentation/controllers/UserController.ts (Add these methods)
+// src/presentation/controllers/UserController.ts
+
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
-import { IUserRepository } from "@domain/interfaces/IUserRepository";
+import { GetCurrentUser } from "@application/use-cases/user/GetCurrentUser";
+import { UpdateUserProfile } from "@application/use-cases/user/UpdateUserProfile";
+import { GetUserProfile } from "@application/use-cases/user/GetUserProfile";
+import { ToggleUserStatus } from "@application/use-cases/user/ToggleUserStatus";
+import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
 import { logger } from "@config/logger";
-import { UpdateUserProfileUseCase } from "@application/use-cases/auth/UpdateUserProfile";
-import { GetCurrentUserUseCase } from "@application/use-cases/auth/GetCurrentUser";
+import { AppError } from "@shared/errors/AppError";
 
 export class UserController {
   constructor(
-    private readonly userRepository: IUserRepository,
-    private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
-    private readonly updateUserProfileUseCase: UpdateUserProfileUseCase
+    private readonly getCurrentUserUseCase: GetCurrentUser,
+    private readonly updateUserProfileUseCase: UpdateUserProfile,
+    private readonly getUserProfileUseCase: GetUserProfile,
+    private readonly toggleUserStatusUseCase: ToggleUserStatus,
+    private readonly changeUserRoleUseCase: ChangeUserRole
   ) {}
 
-  // ... existing methods ...
-
   /**
-   * PUT /api/v1/user/profile
-   * Update user profile (including domain selection)
+   * GET /api/v1/user/me
+   * Get current authenticated user
    */
-  async updateProfile(
+  getCurrentUser = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> {
+  ): Promise<void> => {
     try {
       const userId = req.userId;
+
       if (!userId) {
-        res.status(401).json({
-          error: "Unauthorized",
-          message: "User not authenticated",
-        });
-        return;
-      }
-      console.log(req.body);
-      const updateData: any = {};
-
-      // Basic profile fields
-      if (req.body.firstName) updateData.firstName = req.body.firstName;
-      if (req.body.lastName) updateData.lastName = req.body.lastName;
-      if (req.body.phone) updateData.phone = req.body.phone;
-      if (req.body.avatar) updateData.avatar = req.body.avatar;
-
-      // Domain selection fields
-      if (req.body.domain_key) {
-        updateData.domainKey = req.body.domain_key;
-      }
-      if (req.body.subcategory_key) {
-        updateData.subcategoryKey = req.body.subcategory_key;
+        throw new AppError("User not authenticated", 401);
       }
 
-      logger.info(`Updating profile for user: ${userId}`);
-
-      console.log("updateData:", updateData);
-
-      const updatedUser: any = await this.updateUserProfileUseCase.execute(
-        userId,
-        updateData
-      );
-
-      res.status(200).json({
-        success: true,
-        user: {
-          id: updatedUser._id,
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName,
-          fullName: `${updatedUser.firstName} ${updatedUser.lastName}`,
-          phone: updatedUser.phone,
-          avatar: updatedUser.avatar,
-          role: updatedUser.role,
-          domainKey: updatedUser.domainKey,
-          subcategoryKey: updatedUser.subcategoryKey,
-          verificationStatus: updatedUser.verificationStatus || "none",
-          domainVerified: updatedUser.domainVerified || false,
-          domainDocumentUrl: updatedUser.domainDocumentUrl,
-        },
-      });
-    } catch (error) {
-      logger.error("Error updating profile:", error);
-      res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Failed to update profile",
-      });
-    }
-  }
-
-  /**
-   * GET /api/v1/user/profile
-   * Get user profile
-   */
-  async getProfile(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId;
-      if (!userId) {
-        res.status(401).json({
-          error: "Unauthorized",
-          message: "User not authenticated",
-        });
-        return;
-      }
-
-      const user: any = await this.userRepository.findById(userId);
-      if (!user) {
-        res.status(404).json({
-          error: "NOT_FOUND",
-          message: "User not found",
-        });
-        return;
-      }
-
-      res.status(200).json({
-        user: {
-          id: user._id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          fullName: `${user.firstName} ${user.lastName}`,
-          phone: user.phone,
-          avatar: user.avatar,
-          role: user.role,
-          domainKey: user.domainKey,
-          subcategoryKey: user.subcategoryKey,
-          domainVerified: user.domainVerified || false,
-          domainDocumentUrl: user.domainDocumentUrl,
-          verificationStatus: user.verificationStatus || "none",
-          verificationNotes: user.verificationNotes,
-          createdAt: user.createdAt?.toISOString(),
-          updatedAt: user.updatedAt?.toISOString(),
-        },
-      });
-    } catch (error) {
-      logger.error("Error getting profile:", error);
-      res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Failed to get profile",
-      });
-    }
-  }
-
-  async getCurrentUser(req: AuthRequest, res: Response, next: NextFunction) {
-    try {
-      const userId = req.userId;
-      if (!userId) {
-        res.status(401).json({
-          error: "Unauthorized",
-          message: "User not authenticated",
-        });
-        return;
-      }
       const user = await this.getCurrentUserUseCase.execute(userId);
       res.status(200).json(user);
     } catch (error) {
       logger.error("Error getting current user:", error);
-      res.status(500).json({
-        error: "INTERNAL_ERROR",
-        message: "Failed to get current user",
-      });
+      next(error);
     }
-  }
+  };
+
+  /**
+   * GET /api/v1/user/profile
+   * Get user profile (alias for getCurrentUser)
+   */
+  getProfile = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new AppError("User not authenticated", 401);
+      }
+
+      const user = await this.getUserProfileUseCase.execute(userId);
+
+      res.status(200).json({
+        success: true,
+        user,
+      });
+    } catch (error) {
+      logger.error("Error getting user profile:", error);
+      next(error);
+    }
+  };
+
+  /**
+   * PUT /api/v1/user/profile
+   * Update user profile
+   */
+  updateProfile = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new AppError("User not authenticated", 401);
+      }
+      const updateData = {
+        firstName: req.body.first_name,
+        lastName: req.body.last_name,
+        phone: req.body.phone,
+        avatar: req.body.avatar,
+        bio: req.body.bio,
+        city: req.body.city,
+        domainKey: req.body.domain_key,
+        subcategoryKey: req.body.subcategory_key,
+      };
+
+      // Remove undefined values
+      Object.keys(updateData).forEach(
+        (key) =>
+          updateData[key as keyof typeof updateData] === undefined &&
+          delete updateData[key as keyof typeof updateData]
+      );
+
+      logger.info(`Updating profile for user: ${userId}`, { updateData });
+
+      const user = await this.updateUserProfileUseCase.execute(
+        userId,
+        updateData
+      );
+      res.status(200).json(user);
+    } catch (error) {
+      logger.error("Error updating profile:", error);
+      next(error);
+    }
+  };
+
+  /**
+   * GET /api/v1/user/:userId
+   * Get user by ID (Admin only)
+   */
+  getUserById = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { userId } = req.params;
+
+      if (!userId) {
+        throw new AppError("User ID is required", 400);
+      }
+
+      const user = await this.getUserProfileUseCase.execute(userId);
+
+      res.status(200).json({
+        success: true,
+        user,
+      });
+    } catch (error) {
+      logger.error("Error getting user by ID:", error);
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/v1/admin/users/:userId/status
+   * Toggle user active status (Admin only)
+   */
+  toggleUserStatus = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const requestingUserId = req.userId;
+
+      if (!requestingUserId) {
+        throw new AppError("User not authenticated", 401);
+      }
+
+      if (!userId) {
+        throw new AppError("User ID is required", 400);
+      }
+
+      const result = await this.toggleUserStatusUseCase.execute(
+        userId,
+        requestingUserId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: `User ${
+          result.status === "active" ? "activated" : "deactivated"
+        } successfully`,
+        status: result.status,
+      });
+    } catch (error) {
+      logger.error("Error toggling user status:", error);
+      next(error);
+    }
+  };
+
+  /**
+   * PATCH /api/v1/admin/users/:userId/role
+   * Change user role (Admin only)
+   */
+  changeUserRole = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      const { role } = req.body;
+      const requestingUserId = req.userId;
+
+      if (!requestingUserId) {
+        throw new AppError("User not authenticated", 401);
+      }
+
+      if (!userId) {
+        throw new AppError("User ID is required", 400);
+      }
+
+      if (!role) {
+        throw new AppError("Role is required", 400);
+      }
+
+      const validRoles = ["user", "admin", "moderator", "super_admin"];
+      if (!validRoles.includes(role)) {
+        throw new AppError(
+          `Invalid role. Must be one of: ${validRoles.join(", ")}`,
+          400
+        );
+      }
+
+      const user = await this.changeUserRoleUseCase.execute(
+        userId,
+        role,
+        requestingUserId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "User role updated successfully",
+        user,
+      });
+    } catch (error) {
+      logger.error("Error changing user role:", error);
+      next(error);
+    }
+  };
 }

@@ -1,21 +1,16 @@
 import { IUserRepository } from "@domain/interfaces/IUserRepository";
-import { User } from "@domain/entities/User";
 import { AppError } from "@shared/errors/AppError";
 
-export class GetCurrentUserUseCase {
+export class GetUserProfile {
   constructor(private userRepository: IUserRepository) {}
 
-  async execute(userId: string): Promise<User> {
+  async execute(userId: string) {
     const user = await this.userRepository.findById(userId);
 
     if (!user) {
       throw new AppError("User not found", 404);
     }
 
-    if (!user.isActive) {
-      throw new AppError("Your account has been deactivated", 403);
-    }
-
-    return user;
+    return user.toPublicJSON();
   }
 }

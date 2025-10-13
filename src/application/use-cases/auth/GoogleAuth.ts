@@ -1,6 +1,8 @@
+// src/application/use-cases/auth/GoogleAuth.ts
+
 import { IUserRepository } from "@domain/interfaces/IUserRepository";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
-import { User, UserRole } from "@domain/entities/User";
+import { User, UserRole, VerificationStatus } from "@domain/entities/User";
 import { AppError } from "@shared/errors/AppError";
 import { OAuth2Client } from "google-auth-library";
 
@@ -11,7 +13,7 @@ export interface GoogleAuthDTO {
 export interface GoogleAuthResponse {
   accessToken: string;
   refreshToken: string;
-  user: User;
+  user: any; // Use serialized user object
   isNewUser: boolean;
 }
 
@@ -35,7 +37,7 @@ export class GoogleAuthUseCase {
 
   constructor(
     private userRepository: IUserRepository,
-    private AuthService: IAuthService,
+    private authService: IAuthService,
     googleClientId: string
   ) {
     if (!googleClientId) {
@@ -50,7 +52,7 @@ export class GoogleAuthUseCase {
     try {
       let ticket;
 
-      // Try multiple audience variations like in the old version
+      // Try multiple audience variations for better compatibility
       try {
         ticket = await this.googleClient.verifyIdToken({
           idToken: token,
@@ -58,16 +60,17 @@ export class GoogleAuthUseCase {
         });
       } catch (firstError: any) {
         try {
+          // Try with alternative audience format
+          const alternativeAudience = `${this.clientId.split("-")[0]}-${
+            this.clientId.split("-")[1]
+          }.apps.googleusercontent.com`;
+
           ticket = await this.googleClient.verifyIdToken({
             idToken: token,
-            audience: [
-              this.clientId,
-              `${this.clientId.split("-")[0]}-${
-                this.clientId.split("-")[1]
-              }.apps.googleusercontent.com`,
-            ],
+            audience: [this.clientId, alternativeAudience],
           });
         } catch (secondError: any) {
+          // Last attempt without audience
           ticket = await this.googleClient.verifyIdToken({
             idToken: token,
           });
@@ -108,7 +111,7 @@ export class GoogleAuthUseCase {
         exp: payload.exp || 0,
       };
     } catch (error: any) {
-      // Enhanced error handling from old version
+      // Enhanced error handling
       if (error.message?.includes("Token used too early")) {
         throw new AppError(
           "Google token is not yet valid. Please try again.",
@@ -151,7 +154,7 @@ export class GoogleAuthUseCase {
 
   async execute(data: GoogleAuthDTO): Promise<GoogleAuthResponse> {
     try {
-      // Verify Google token using enhanced method
+      // Verify Google token
       const googlePayload = await this.verifyGoogleToken(data.token);
 
       const { email, given_name, family_name, picture } = googlePayload;
@@ -162,65 +165,102 @@ export class GoogleAuthUseCase {
 
       if (!user) {
         // Create new user from Google data
-        // Ensure lastName meets validation requirements (minimum 2 characters)
-        // If family_name is empty or too short, use a default value
+        const firstName = given_name?.trim() || "User";
         let lastName = family_name?.trim() || "";
 
-        const firstName = given_name?.trim() || "User";
+        // Ensure lastName meets minimum requirements (2 characters)
+        if (lastName.length < 2) {
+          // Extract from full name if available
+          const nameParts = googlePayload.name?.trim().split(" ") || [];
+          if (nameParts.length > 1) {
+            lastName = nameParts.slice(1).join(" ");
+          }
 
-        user = new User({
-          email: email,
+          // If still too short, use a default
+          if (lastName.length < 2) {
+            lastName = "User";
+          }
+        }
+
+        // Create user entity
+        const newUserData = {
+          email: email.toLowerCase().trim(),
           firstName: firstName,
           lastName: lastName,
           avatar: picture || undefined,
           role: UserRole.USER,
           isActive: true,
+          isAdmin: false,
+          verificationStatus: VerificationStatus.NONE,
+          domainVerified: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-        });
+        };
 
-        user = await this.userRepository.create(user);
+        // Create user using repository (it will handle entity creation)
+        user = await this.userRepository.create(newUserData);
         isNewUser = true;
       } else {
-        // Update user info if needed
+        // Existing user - update profile and last login
+        const updateData: any = {};
+
+        // Update avatar if it's different and not empty
         if (picture && picture !== user.avatar) {
-          user.updateAvatar(picture);
+          updateData.avatar = picture;
         }
 
-        // Update last login
-        user.updateLastLogin();
-        await this.userRepository.update(user.id!, user);
+        // Update last login time
+        updateData.lastLoginAt = new Date();
+        updateData.updatedAt = new Date();
+
+        // Update user in repository
+        const updatedUser = await this.userRepository.update(
+          user.id!,
+          updateData
+        );
+        if (updatedUser) {
+          user = updatedUser;
+        }
       }
 
-      // Check if user is active
+      // Check if user account is active
       if (!user.isActive) {
-        throw new AppError("Your account has been deactivated", 403);
+        throw new AppError(
+          "Your account has been deactivated. Please contact support.",
+          403
+        );
       }
 
-      // Generate tokens
-      const accessToken = this.AuthService.generateToken(
-        user.id!,
-        user.role,
-        user.email
-      );
-      const refreshToken = this.AuthService.generateRefreshToken(
+      // Generate JWT tokens
+      const accessToken = this.authService.generateToken(
         user.id!,
         user.role,
         user.email
       );
 
+      const refreshToken = this.authService.generateRefreshToken(
+        user.id!,
+        user.role,
+        user.email
+      );
+
+      // Return response with serialized user
       return {
         accessToken,
         refreshToken,
-        user: user,
+        user: user.toPublicJSON(),
         isNewUser,
       };
     } catch (error) {
       if (error instanceof AppError) {
         throw error;
       }
+
       console.error("Google authentication error:", error);
-      throw new AppError("Google authentication failed", 401);
+      throw new AppError(
+        "Google authentication failed. Please try again.",
+        401
+      );
     }
   }
 }

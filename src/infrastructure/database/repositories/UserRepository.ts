@@ -1,106 +1,257 @@
+import { User, UserRole, VerificationStatus } from "@domain/entities/User";
 import { IUserRepository } from "@domain/interfaces/IUserRepository";
-import { User } from "@domain/entities/User";
 import { UserModel } from "@infrastructure/database/models/UserModel";
-import { VerificationStatus } from "@application/dtos/VerificationDTO";
+import { Types } from "mongoose";
 
 export class UserRepository implements IUserRepository {
-  async create(user: User): Promise<User> {
-    const newUser = await UserModel.create(user);
-    return this.mapToEntity(newUser);
+  async create(userData: any): Promise<User> {
+    try {
+      const userDoc = await UserModel.create(userData);
+      return User.fromPersistence(userDoc.toObject());
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new Error("User with this email already exists");
+      }
+      throw new Error(`Failed to create user: ${error.message}`);
+    }
   }
 
   async findById(id: string): Promise<User | null> {
-    const user = await UserModel.findById(id);
-    return user ? this.mapToEntity(user) : null;
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        return null;
+      }
+
+      const userDoc = await UserModel.findById(id).lean();
+      if (!userDoc) {
+        return null;
+      }
+
+      return User.fromPersistence(userDoc);
+    } catch (error: any) {
+      throw new Error(`Failed to find user by ID: ${error.message}`);
+    }
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await UserModel.findOne({ email: email.toLowerCase() });
-    return user ? this.mapToEntity(user) : null;
-  }
+    try {
+      const userDoc = await UserModel.findOne({
+        email: email.toLowerCase().trim(),
+      }).lean();
 
-  async findOne(query: any): Promise<User | null> {
-    const user = await UserModel.findOne(query);
-    return user ? this.mapToEntity(user) : null;
-  }
+      if (!userDoc) {
+        return null;
+      }
 
-  async update(id: string, user: User | any): Promise<User | null> {
-    console.log("===============================");
-    console.log("user:", user);
-    console.log("===============================");
-    const { _id, ...data } = user;
-    console.log("===============================");
-    console.log("data:", data);
-    console.log("===============================");
-
-    const updated = await UserModel.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    });
-
-    if (!updated) {
-      return null;
+      return User.fromPersistence(userDoc);
+    } catch (error: any) {
+      throw new Error(`Failed to find user by email: ${error.message}`);
     }
+  }
 
-    return this.mapToEntity(updated);
+  async update(id: string, updateData: any): Promise<User | null> {
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new Error("Invalid user ID format");
+      }
+
+      // Sanitize update data
+      const sanitizedData = this.sanitizeUpdateData(updateData);
+
+      const userDoc = await UserModel.findByIdAndUpdate(
+        id,
+        {
+          ...sanitizedData,
+          updatedAt: new Date(),
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      ).lean();
+
+      if (!userDoc) {
+        return null;
+      }
+
+      return User.fromPersistence(userDoc);
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new Error("Email already in use");
+      }
+      throw new Error(`Failed to update user: ${error.message}`);
+    }
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = await UserModel.findByIdAndDelete(id);
-    return !!result;
-  }
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        return false;
+      }
 
-  async findByVerificationStatus(status: VerificationStatus): Promise<User[]> {
-    const users = await UserModel.find({ verificationStatus: status }).sort({
-      updatedAt: -1,
-    });
-
-    return users.map((user) => this.mapToEntity(user));
-  }
-
-  async findWithVerification(): Promise<User[]> {
-    const users = await UserModel.find({
-      verificationStatus: { $in: ["pending", "approved", "rejected"] },
-    }).sort({ updatedAt: -1 });
-
-    return users.map((user) => this.mapToEntity(user));
-  }
-
-  async count(query: any = {}): Promise<number> {
-    return await UserModel.countDocuments(query);
+      const result = await UserModel.findByIdAndDelete(id);
+      return !!result;
+    } catch (error: any) {
+      throw new Error(`Failed to delete user: ${error.message}`);
+    }
   }
 
   async exists(email: string): Promise<boolean> {
-    const count = await UserModel.countDocuments({
-      email: email.toLowerCase(),
-    });
-    return count > 0;
+    try {
+      const count = await UserModel.countDocuments({
+        email: email.toLowerCase().trim(),
+      });
+      return count > 0;
+    } catch (error: any) {
+      throw new Error(`Failed to check user existence: ${error.message}`);
+    }
   }
 
   async findAll(query: any = {}): Promise<User[]> {
-    const users = await UserModel.find(query);
-    return users.map((user) => this.mapToEntity(user));
+    try {
+      const userDocs = await UserModel.find(query)
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return userDocs.map((doc) => User.fromPersistence(doc));
+    } catch (error: any) {
+      throw new Error(`Failed to find users: ${error.message}`);
+    }
   }
 
-  private mapToEntity(user: any): any {
-    return {
-      _id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      phone: user.phone,
-      avatar: user.avatar,
-      role: user.role,
-      isActive: user.isActive,
-      isAdmin: user.isAdmin,
-      domainKey: user.domainKey,
-      subcategoryKey: user.subcategoryKey,
-      domainVerified: user.domainVerified,
-      domainDocumentUrl: user.domainDocumentUrl,
-      verificationStatus: user.verificationStatus,
-      verificationNotes: user.verificationNotes,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
+  async findByVerificationStatus(status: VerificationStatus): Promise<User[]> {
+    try {
+      const userDocs = await UserModel.find({
+        verificationStatus: status,
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      return userDocs.map((doc) => User.fromPersistence(doc));
+    } catch (error: any) {
+      throw new Error(
+        `Failed to find users by verification status: ${error.message}`
+      );
+    }
+  }
+
+  async findVerifiedUserIds(): Promise<string[]> {
+    const users = await UserModel.find(
+      { domainVerified: true, isActive: true },
+      { _id: 1 }
+    ).lean();
+
+    return users.map((user) => user._id.toString());
+  }
+
+  async findWithVerification(): Promise<User[]> {
+    try {
+      const userDocs = await UserModel.find({
+        verificationStatus: {
+          $in: [
+            VerificationStatus.PENDING,
+            VerificationStatus.APPROVED,
+            VerificationStatus.REJECTED,
+          ],
+        },
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      return userDocs.map((doc) => User.fromPersistence(doc));
+    } catch (error: any) {
+      throw new Error(
+        `Failed to find users with verification: ${error.message}`
+      );
+    }
+  }
+
+  async findByDomain(domainKey: string): Promise<User[]> {
+    try {
+      const userDocs = await UserModel.find({
+        domainKey,
+        domainVerified: true,
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return userDocs.map((doc) => User.fromPersistence(doc));
+    } catch (error: any) {
+      throw new Error(`Failed to find users by domain: ${error.message}`);
+    }
+  }
+
+  async findByRole(role: UserRole): Promise<User[]> {
+    try {
+      const userDocs = await UserModel.find({ role })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return userDocs.map((doc) => User.fromPersistence(doc));
+    } catch (error: any) {
+      throw new Error(`Failed to find users by role: ${error.message}`);
+    }
+  }
+
+  async count(query: any = {}): Promise<number> {
+    try {
+      return await UserModel.countDocuments(query);
+    } catch (error: any) {
+      throw new Error(`Failed to count users: ${error.message}`);
+    }
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    try {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new Error("Invalid user ID format");
+      }
+
+      await UserModel.findByIdAndUpdate(id, {
+        lastLoginAt: new Date(),
+        updatedAt: new Date(),
+      });
+    } catch (error: any) {
+      throw new Error(`Failed to update last login: ${error.message}`);
+    }
+  }
+
+  // Helper method to sanitize update data
+  private sanitizeUpdateData(data: any): any {
+    const allowed = [
+      "firstName",
+      "lastName",
+      "phone",
+      "avatar",
+      "bio",
+      "city",
+      "role",
+      "isActive",
+      "isAdmin",
+      "domainKey",
+      "subcategoryKey",
+      "domainDocumentUrl",
+      "verificationStatus",
+      "domainVerified",
+      "verificationNotes",
+      "lastLoginAt",
+    ];
+
+    const sanitized: any = {};
+
+    for (const key of allowed) {
+      if (data[key] !== undefined) {
+        sanitized[key] = data[key];
+      }
+    }
+
+    // Trim string fields
+    if (sanitized.firstName) sanitized.firstName = sanitized.firstName.trim();
+    if (sanitized.lastName) sanitized.lastName = sanitized.lastName.trim();
+    if (sanitized.phone) sanitized.phone = sanitized.phone.trim();
+    if (sanitized.bio) sanitized.bio = sanitized.bio.trim();
+    if (sanitized.city) sanitized.city = sanitized.city.trim();
+
+    return sanitized;
   }
 }
