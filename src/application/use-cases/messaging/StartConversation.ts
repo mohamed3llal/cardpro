@@ -1,32 +1,93 @@
-import { IMessagingRepository } from "@domain/interfaces/IMessagingRepository";
-import { AppError } from "@shared/errors/AppError";
+import { IMessagingRepository } from "../../../domain/interfaces/IMessagingRepository";
+import { ICardRepository } from "../../../domain/interfaces/ICardRepository";
+import { IUserRepository } from "../../../domain/interfaces/IUserRepository";
+import { Conversation } from "../../../domain/entities/Conversation";
+import { Message } from "../../../domain/entities/Messaging";
+import { AppError } from "../../../shared/errors/AppError";
+import { CreateConversationDTO } from "../../dtos/MessagingDTO";
 
-export interface StartConversationDTO {
-  userId: string;
-  businessId: string;
-  initialMessage: string;
-}
+export class StartConversation {
+  constructor(
+    private messagingRepository: IMessagingRepository,
+    private cardRepository: ICardRepository,
+    private userRepository: IUserRepository
+  ) {}
 
-export class StartConversationUseCase {
-  constructor(private messagingRepository: IMessagingRepository) {}
+  async execute(
+    userId: string,
+    data: CreateConversationDTO
+  ): Promise<Conversation> {
+    const { business_id, initial_message } = data;
 
-  async execute(dto: StartConversationDTO) {
-    // Validate inputs
-    if (!dto.businessId || !dto.initialMessage) {
-      throw new AppError("Business ID and initial message are required", 400);
-    }
-
-    if (dto.initialMessage.length === 0 || dto.initialMessage.length > 1000) {
-      throw new AppError("Message must be between 1 and 1000 characters", 400);
-    }
-
-    // Start conversation
-    const result = await this.messagingRepository.startConversation(
-      dto.userId,
-      dto.businessId,
-      dto.initialMessage
+    // Check if conversation already exists
+    const existingConvId = await this.messagingRepository.conversationExists(
+      userId,
+      business_id
     );
 
-    return result;
+    if (existingConvId) {
+      const conversation = await this.messagingRepository.getConversationById(
+        existingConvId
+      );
+
+      if (conversation) {
+        // If there's an initial message, send it
+        if (initial_message) {
+          const user = await this.userRepository.findById(userId);
+          if (user) {
+            const message = Message.create({
+              conversationId: existingConvId,
+              senderId: userId,
+              senderName: user.firstName + " " + user.lastName,
+              content: initial_message.trim(),
+              senderAvatar: user.avatar,
+            });
+
+            await this.messagingRepository.createMessage(message);
+            await this.messagingRepository.updateConversation(
+              existingConvId,
+              initial_message.substring(0, 100),
+              new Date()
+            );
+          }
+        }
+
+        return conversation;
+      }
+    }
+
+    // Verify business/card exists
+    const business = await this.cardRepository.findById(business_id);
+    if (!business) {
+      throw new AppError("Business not found", 404);
+    }
+
+    // Get user details
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    // Create conversation
+    const conversation = await this.messagingRepository.createConversation(
+      userId,
+      business_id,
+      initial_message
+    );
+
+    // Send initial message if provided
+    if (initial_message) {
+      const message = Message.create({
+        conversationId: conversation.id,
+        senderId: userId,
+        senderName: user.firstName + " " + user.lastName,
+        content: initial_message.trim(),
+        senderAvatar: user.avatar,
+      });
+
+      await this.messagingRepository.createMessage(message);
+    }
+
+    return conversation;
   }
 }

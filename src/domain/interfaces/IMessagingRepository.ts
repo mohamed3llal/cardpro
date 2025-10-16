@@ -1,45 +1,69 @@
-import {
-  Conversation,
-  Message,
-  NotificationSettings,
-} from "@domain/entities/Messaging";
+import { Conversation } from "../entities/Conversation";
+import { Message } from "../entities/Messaging";
+
+export interface IPaginationOptions {
+  page: number;
+  limit: number;
+}
+
+export interface IPaginationResult<T> {
+  data: T[];
+  pagination: {
+    current_page: number;
+    total_pages: number;
+    total_items: number;
+    limit: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
 
 export interface IMessagingRepository {
-  getConversations(
-    userId: string,
-    filter: any,
-    page: number,
-    limit: number
-  ): Promise<{ conversations: Conversation[]; total: number }>;
-  getConversationById(id: string): Promise<Conversation | null>;
-  startConversation(
+  // Conversations
+  createConversation(
     userId: string,
     businessId: string,
-    initialMessage: string
-  ): Promise<{ conversation: Conversation; message: Message }>;
-  archiveConversation(
-    id: string,
-    userId: string,
-    isArchived: boolean
+    initialMessage?: string
   ): Promise<Conversation>;
-  getMessages(
-    conversationId: string,
+
+  getConversationById(conversationId: string): Promise<Conversation | null>;
+
+  getConversationsByUserId(
     userId: string,
-    page: number,
-    limit: number
-  ): Promise<{ messages: Message[]; total: number }>;
-  sendMessage(
+    options: IPaginationOptions
+  ): Promise<IPaginationResult<Conversation>>;
+
+  getConversationsByBusinessId(
+    businessId: string,
+    options: IPaginationOptions
+  ): Promise<IPaginationResult<Conversation>>;
+
+  updateConversation(
     conversationId: string,
-    senderId: string,
-    content: string,
-    type: string,
-    attachments: any[]
-  ): Promise<Message>;
-  getUnreadCount(
-    userId: string
-  ): Promise<{ unread_count: number; conversations_with_unread: number }>;
-  updateNotificationSettings(
+    lastMessage: string,
+    lastMessageAt: Date
+  ): Promise<void>;
+
+  incrementUnreadCount(conversationId: string, userId: string): Promise<void>;
+
+  resetUnreadCount(conversationId: string, userId: string): Promise<void>;
+
+  deleteConversation(conversationId: string): Promise<void>;
+
+  conversationExists(
     userId: string,
-    data: Partial<NotificationSettings>
-  ): Promise<NotificationSettings>;
+    businessId: string
+  ): Promise<string | null>;
+
+  // Messages
+  createMessage(message: Message): Promise<Message>;
+
+  getMessagesByConversationId(
+    conversationId: string,
+    options: IPaginationOptions
+  ): Promise<IPaginationResult<Message>>;
+
+  markMessagesAsRead(conversationId: string, userId: string): Promise<number>;
+
+  deleteMessagesByConversationId(conversationId: string): Promise<void>;
 }

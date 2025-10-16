@@ -1,46 +1,47 @@
-import { IMessagingRepository } from "@domain/interfaces/IMessagingRepository";
-import { Message } from "@domain/entities/Messaging";
+import { IMessagingRepository } from "../../../domain/interfaces/IMessagingRepository";
 
-export interface GetMessagesDTO {
-  conversationId: string;
-  userId: string;
-  page: number;
-  limit: number;
-}
+import { Message } from "../../../domain/entities/Messaging";
+import { AppError } from "../../../shared/errors/AppError";
+import { PaginationDTO } from "../../dtos/MessagingDTO";
 
-export interface GetMessagesResponse {
-  messages: Message[];
+export interface IPaginationResult<T> {
+  data: T[];
   pagination: {
     current_page: number;
     total_pages: number;
-    total_messages: number;
+    total_items: number;
     limit: number;
     has_next: boolean;
     has_prev: boolean;
   };
 }
-
-export class GetMessagesUseCase {
+export class GetMessages {
   constructor(private messagingRepository: IMessagingRepository) {}
 
-  async execute(dto: GetMessagesDTO): Promise<GetMessagesResponse> {
-    const { messages, total } = await this.messagingRepository.getMessages(
-      dto.conversationId,
-      dto.userId,
-      dto.page,
-      dto.limit
+  async execute(
+    userId: string,
+    conversationId: string,
+    options: PaginationDTO
+  ): Promise<IPaginationResult<Message>> {
+    // Verify conversation exists and user has access
+    const conversation = await this.messagingRepository.getConversationById(
+      conversationId
     );
 
-    return {
-      messages,
-      pagination: {
-        current_page: dto.page,
-        total_pages: Math.ceil(total / dto.limit),
-        total_messages: total,
-        limit: dto.limit,
-        has_next: dto.page * dto.limit < total,
-        has_prev: dto.page > 1,
-      },
-    };
+    if (!conversation) {
+      throw new AppError("Conversation not found", 404);
+    }
+
+    if (conversation.userId !== userId && conversation.businessId !== userId) {
+      throw new AppError(
+        "You are not authorized to access this conversation",
+        403
+      );
+    }
+
+    return await this.messagingRepository.getMessagesByConversationId(
+      conversationId,
+      options
+    );
   }
 }

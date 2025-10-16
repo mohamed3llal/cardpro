@@ -13,6 +13,7 @@ export const env = {
   ENABLE_CLUSTER: process.env.ENABLE_CLUSTER,
   WORKER_COUNT: process.env.WORKER_COUNT,
   DB_CONNECT_TIMEOUT_MS: process.env.DB_CONNECT_TIMEOUT_MS,
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
 };
 
 // Validate required environment variables

@@ -1,46 +1,101 @@
 import Joi from "joi";
 
-export const startConversationSchema = Joi.object({
-  business_id: Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .required()
-    .messages({
-      "string.pattern.base": "Invalid business ID format",
+// 🛡️ Common reusable regex validations
+const scriptPattern = /<script[^>]*>.*?<\/script>/gi;
+const jsPattern = /javascript:/gi;
+const eventPattern = /on\w+=/gi;
+
+// 🔍 Shared message content validator (protects from XSS)
+const messageSecurityValidation = (value: string, helpers: any) => {
+  if (
+    scriptPattern.test(value) ||
+    jsPattern.test(value) ||
+    eventPattern.test(value)
+  ) {
+    return helpers.error("any.invalid", { message: "Invalid message content" });
+  }
+  return value;
+};
+
+// 🧩 Joi schema definitions
+export const messagingValidator = {
+  /** ✅ Create Conversation */
+  createConversation: Joi.object({
+    business_id: Joi.string().required().messages({
+      "string.base": "Business ID must be a string",
       "any.required": "Business ID is required",
     }),
-  initial_message: Joi.string().min(1).max(1000).required().messages({
-    "string.min": "Message cannot be empty",
-    "string.max": "Message cannot exceed 1000 characters",
-    "any.required": "Initial message is required",
-  }),
-});
 
-export const sendMessageSchema = Joi.object({
-  content: Joi.string().min(1).max(2000).required().messages({
-    "string.min": "Message cannot be empty",
-    "string.max": "Message cannot exceed 2000 characters",
-    "any.required": "Message content is required",
+    initial_message: Joi.string()
+      .max(2000)
+      .custom(messageSecurityValidation)
+      .messages({
+        "string.base": "Initial message must be a string",
+        "string.max": "Message must be less than 2000 characters",
+        "any.invalid": "Invalid message content",
+      })
+      .optional(),
   }),
-  type: Joi.string().valid("text", "image", "file", "location").default("text"),
-  attachments: Joi.array().items(
-    Joi.object({
-      type: Joi.string().required(),
-      url: Joi.string().uri().required(),
-      thumbnail: Joi.string().uri().optional(),
-      filename: Joi.string().optional(),
-      size: Joi.number().optional(),
-    })
-  ),
-});
 
-export const archiveConversationSchema = Joi.object({
-  is_archived: Joi.boolean().required().messages({
-    "any.required": "is_archived field is required",
+  /** ✅ Send Message */
+  sendMessage: Joi.object({
+    conversation_id: Joi.string().required().messages({
+      "string.base": "Conversation ID must be a string",
+      "any.required": "Conversation ID is required",
+    }),
+
+    content: Joi.string()
+      .trim()
+      .min(1)
+      .max(2000)
+      .required()
+      .custom(messageSecurityValidation)
+      .messages({
+        "string.base": "Message content must be a string",
+        "string.empty": "Message content is required",
+        "string.min": "Message must be between 1 and 2000 characters",
+        "string.max": "Message must be between 1 and 2000 characters",
+        "any.invalid": "Invalid message content",
+      }),
   }),
-});
 
-export const updateNotificationSettingsSchema = Joi.object({
-  email_notifications: Joi.boolean().optional(),
-  push_notifications: Joi.boolean().optional(),
-  mute_until: Joi.date().iso().optional().allow(null),
-});
+  /** ✅ Get Messages (with pagination) */
+  getMessages: Joi.object({
+    conversationId: Joi.string().required().messages({
+      "string.base": "Conversation ID must be a string",
+      "any.required": "Conversation ID is required",
+    }),
+
+    page: Joi.number().integer().min(1).optional().messages({
+      "number.base": "Page must be a positive integer",
+      "number.min": "Page must be a positive integer",
+    }),
+
+    limit: Joi.number().integer().min(1).max(100).optional().messages({
+      "number.base": "Limit must be a number",
+      "number.min": "Limit must be between 1 and 100",
+      "number.max": "Limit must be between 1 and 100",
+    }),
+  }),
+
+  /** ✅ Validate Conversation ID only */
+  conversationId: Joi.object({
+    conversationId: Joi.string().required().messages({
+      "string.base": "Conversation ID must be a string",
+      "any.required": "Conversation ID is required",
+    }),
+  }),
+
+  /** ✅ Pagination only (shared schema) */
+  pagination: Joi.object({
+    page: Joi.number().integer().min(1).optional().messages({
+      "number.base": "Page must be a positive integer",
+      "number.min": "Page must be a positive integer",
+    }),
+    limit: Joi.number().integer().min(1).max(100).optional().messages({
+      "number.base": "Limit must be a number",
+      "number.min": "Limit must be between 1 and 100",
+      "number.max": "Limit must be between 1 and 100",
+    }),
+  }),
+};

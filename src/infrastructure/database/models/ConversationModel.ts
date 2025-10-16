@@ -2,13 +2,16 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IConversationDocument extends Document {
   business_id: string;
+  business_name: string;
+  business_avatar?: string;
   user_id: string;
-  other_participant_id?: string;
-  last_message_id?: string;
+  user_name: string;
+  user_avatar?: string;
+  last_message?: string;
+  last_message_at?: Date;
   unread_count: number;
-  is_archived: boolean;
   created_at: Date;
-  updated_at: Date;
+  updated_at?: Date;
 }
 
 const ConversationSchema = new Schema<IConversationDocument>(
@@ -18,34 +21,58 @@ const ConversationSchema = new Schema<IConversationDocument>(
       required: true,
       index: true,
     },
+    business_name: {
+      type: String,
+      required: true,
+    },
+    business_avatar: {
+      type: String,
+      default: null,
+    },
     user_id: {
       type: String,
       required: true,
       index: true,
     },
-    other_participant_id: {
+    user_name: {
       type: String,
-      index: true,
+      required: true,
     },
-    last_message_id: String,
+    user_avatar: {
+      type: String,
+      default: null,
+    },
+    last_message: {
+      type: String,
+      default: null,
+    },
+    last_message_at: {
+      type: Date,
+      default: null,
+    },
     unread_count: {
       type: Number,
       default: 0,
-      min: 0,
     },
-    is_archived: {
-      type: Boolean,
-      default: false,
-      index: true,
+    created_at: {
+      type: Date,
+      default: Date.now,
+    },
+    updated_at: {
+      type: Date,
+      default: null,
     },
   },
   {
-    timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+    timestamps: false,
+    collection: "conversations",
   }
 );
 
-// Ensure unique conversation per business-user pair
-ConversationSchema.index({ business_id: 1, user_id: 1 }, { unique: true });
+// Compound indexes
+ConversationSchema.index({ user_id: 1, business_id: 1 }, { unique: true });
+ConversationSchema.index({ business_id: 1, user_id: 1 });
+ConversationSchema.index({ last_message_at: -1 });
 
 export const ConversationModel = mongoose.model<IConversationDocument>(
   "Conversation",

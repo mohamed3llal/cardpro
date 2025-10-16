@@ -1,179 +1,251 @@
-import { IMessagingRepository } from "@domain/interfaces/IMessagingRepository";
-import { ConversationModel } from "@infrastructure/database/models/ConversationModel";
-import { MessageModel } from "@infrastructure/database/models/MessageModel";
-import { NotificationSettingsModel } from "@infrastructure/database/models/NotificationSettingsModel";
-
+import { ConversationModel } from "../models/ConversationModel";
+import { MessageModel } from "../models/MessageModel";
+import { Conversation } from "../../../domain/entities/Conversation";
+import { Message } from "../../../domain/entities/Messaging";
 import {
-  Conversation,
-  Message,
-  NotificationSettings,
-} from "@domain/entities/Messaging";
+  IMessagingRepository,
+  IPaginationOptions,
+  IPaginationResult,
+} from "../../../domain/interfaces/IMessagingRepository";
 
 export class MessagingRepository implements IMessagingRepository {
-  async getConversations(
-    userId: string,
-    filter: any,
-    page: number,
-    limit: number
-  ): Promise<{ conversations: any[]; total: number }> {
-    const skip = (page - 1) * limit;
-    const query: any = { user_id: userId };
-
-    if (filter === "unread") query.unread_count = { $gt: 0 };
-    else if (filter === "archived") query.is_archived = true;
-    else query.is_archived = false;
-
-    const [conversations, total] = await Promise.all([
-      ConversationModel.find(query)
-        .sort({ updated_at: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      ConversationModel.countDocuments(query),
-    ]);
-
-    return { conversations, total };
-  }
-
-  async getConversationById(id: string): Promise<any | null> {
-    return ConversationModel.findById(id).lean();
-  }
-
-  async startConversation(
+  async createConversation(
     userId: string,
     businessId: string,
-    initialMessage: string
-  ): Promise<{ conversation: any; message: any }> {
-    let conversation: any = await ConversationModel.findOne({
+    initialMessage?: string
+  ): Promise<Conversation> {
+    // Check if conversation already exists
+    const existingConv = await ConversationModel.findOne({
       user_id: userId,
       business_id: businessId,
     });
 
-    if (!conversation) {
-      conversation = await ConversationModel.create({
-        user_id: userId,
-        business_id: businessId,
-        unread_count: 0,
-        is_archived: false,
-      });
+    if (existingConv) {
+      return this.mapToConversationEntity(existingConv);
     }
 
-    const message = await MessageModel.create({
-      conversation_id: conversation._id,
-      sender_id: userId,
-      content: initialMessage,
-      type: "text",
-      attachments: [],
-      is_read: false,
+    // Get user and business details (you might want to inject these services)
+    const conversation = await ConversationModel.create({
+      business_id: businessId,
+      business_name: "Business Name", // Fetch from CardRepository
+      business_avatar: null,
+      user_id: userId,
+      user_name: "User Name", // Fetch from UserRepository
+      user_avatar: null,
+      last_message: initialMessage || null,
+      last_message_at: initialMessage ? new Date() : null,
+      unread_count: 0,
+      created_at: new Date(),
     });
 
-    conversation.last_message_id = message._id;
-    await conversation.save();
-
-    return {
-      conversation: conversation.toObject(),
-      message: message.toObject(),
-    };
+    return this.mapToConversationEntity(conversation);
   }
 
-  async archiveConversation(
-    id: string,
+  async getConversationById(
+    conversationId: string
+  ): Promise<Conversation | null> {
+    const conversation = await ConversationModel.findById(conversationId);
+    return conversation ? this.mapToConversationEntity(conversation) : null;
+  }
+
+  async getConversationsByUserId(
     userId: string,
-    isArchived: boolean
+    options: IPaginationOptions
   ): Promise<any> {
-    const conversation = await ConversationModel.findById(id);
-    if (!conversation) throw new Error("Conversation not found");
-
-    if (conversation.user_id.toString() !== userId)
-      throw new Error("FORBIDDEN");
-
-    conversation.is_archived = isArchived;
-    await conversation.save();
-
-    return conversation.toObject();
-  }
-
-  async getMessages(
-    conversationId: string,
-    userId: string,
-    page: number,
-    limit: number
-  ): Promise<{ messages: any[]; total: number }> {
+    const { page, limit } = options;
     const skip = (page - 1) * limit;
-    const [messages, total] = await Promise.all([
-      MessageModel.find({ conversation_id: conversationId, is_deleted: false })
-        .sort({ created_at: -1 })
+
+    const [conversations, total] = await Promise.all([
+      ConversationModel.find({ user_id: userId })
+        .sort({ last_message_at: -1 })
         .skip(skip)
-        .limit(limit)
-        .lean(),
-      MessageModel.countDocuments({
-        conversation_id: conversationId,
-        is_deleted: false,
-      }),
+        .limit(limit),
+      ConversationModel.countDocuments({ user_id: userId }),
     ]);
 
-    return {
-      messages: messages.reverse(), // keep chronological order
-      total,
-    };
+    return this.buildPaginationResult(conversations, total, page, limit);
   }
 
-  async sendMessage(
-    conversationId: string,
-    senderId: string,
-    content: string,
-    type: string,
-    attachments: any[]
+  async getConversationsByBusinessId(
+    businessId: string,
+    options: IPaginationOptions
   ): Promise<any> {
-    const message = await MessageModel.create({
-      conversation_id: conversationId,
-      sender_id: senderId,
-      content,
-      type,
-      attachments,
-      is_read: false,
-    });
+    const { page, limit } = options;
+    const skip = (page - 1) * limit;
 
+    const [conversations, total] = await Promise.all([
+      ConversationModel.find({ business_id: businessId })
+        .sort({ last_message_at: -1 })
+        .skip(skip)
+        .limit(limit),
+      ConversationModel.countDocuments({ business_id: businessId }),
+    ]);
+
+    return this.buildPaginationResult(conversations, total, page, limit);
+  }
+
+  async updateConversation(
+    conversationId: string,
+    lastMessage: string,
+    lastMessageAt: Date
+  ): Promise<void> {
     await ConversationModel.findByIdAndUpdate(conversationId, {
-      last_message_id: message._id,
+      last_message: lastMessage,
+      last_message_at: lastMessageAt,
       updated_at: new Date(),
     });
-
-    return message.toObject();
   }
 
-  async getUnreadCount(
+  async incrementUnreadCount(
+    conversationId: string,
     userId: string
-  ): Promise<{ unread_count: number; conversations_with_unread: number }> {
-    const unreadConversations = await ConversationModel.find({
-      user_id: userId,
-      unread_count: { $gt: 0 },
-    }).lean();
+  ): Promise<void> {
+    const conversation = await ConversationModel.findById(conversationId);
+    if (!conversation) return;
 
-    const totalUnread = unreadConversations.reduce(
-      (sum, c) => sum + (c.unread_count || 0),
-      0
+    // Increment unread for the recipient (not the sender)
+    if (conversation.user_id !== userId) {
+      await ConversationModel.findByIdAndUpdate(conversationId, {
+        $inc: { unread_count: 1 },
+      });
+    }
+  }
+
+  async resetUnreadCount(
+    conversationId: string,
+    userId: string
+  ): Promise<void> {
+    await ConversationModel.findByIdAndUpdate(conversationId, {
+      unread_count: 0,
+    });
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await ConversationModel.findByIdAndDelete(conversationId);
+  }
+
+  async conversationExists(
+    userId: string,
+    businessId: string
+  ): Promise<string | null> {
+    const conversation: any = await ConversationModel.findOne({
+      user_id: userId,
+      business_id: businessId,
+    });
+    return conversation ? conversation._id.toString() : null;
+  }
+
+  // Messages
+  async createMessage(message: Message): Promise<Message> {
+    const messageDoc = await MessageModel.create({
+      conversation_id: message.conversationId,
+      sender_id: message.senderId,
+      sender_name: message.senderName,
+      sender_avatar: message.senderAvatar,
+      content: message.content,
+      read: false,
+      created_at: new Date(),
+    });
+
+    return this.mapToMessageEntity(messageDoc);
+  }
+
+  async getMessagesByConversationId(
+    conversationId: string,
+    options: IPaginationOptions
+  ): Promise<IPaginationResult<Message>> {
+    const { page, limit } = options;
+    const skip = (page - 1) * limit;
+
+    const [messages, total] = await Promise.all([
+      MessageModel.find({ conversation_id: conversationId })
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(limit),
+      MessageModel.countDocuments({ conversation_id: conversationId }),
+    ]);
+
+    return this.buildPaginationResult(
+      messages.map((m) => this.mapToMessageEntity(m)),
+      total,
+      page,
+      limit
+    );
+  }
+
+  async markMessagesAsRead(
+    conversationId: string,
+    userId: string
+  ): Promise<number> {
+    const result = await MessageModel.updateMany(
+      {
+        conversation_id: conversationId,
+        sender_id: { $ne: userId },
+        read: false,
+      },
+      {
+        read: true,
+        updated_at: new Date(),
+      }
     );
 
-    return {
-      unread_count: totalUnread,
-      conversations_with_unread: unreadConversations.length,
-    };
+    return result.modifiedCount;
   }
 
-  async updateNotificationSettings(
-    userId: string,
-    data: Partial<NotificationSettings>
-  ): Promise<NotificationSettings> {
-    let settings = await NotificationSettingsModel.findOne({ user_id: userId });
+  async deleteMessagesByConversationId(conversationId: string): Promise<void> {
+    await MessageModel.deleteMany({ conversation_id: conversationId });
+  }
 
-    if (!settings) {
-      settings = new NotificationSettingsModel({ user_id: userId });
-    }
+  // Helper methods
+  private mapToConversationEntity(doc: any): Conversation {
+    return new Conversation(
+      doc._id.toString(),
+      doc.business_id,
+      doc.business_name,
+      doc.user_id,
+      doc.user_name,
+      doc.last_message,
+      doc.last_message_at,
+      doc.unread_count,
+      doc.business_avatar,
+      doc.user_avatar,
+      doc.created_at,
+      doc.updated_at
+    );
+  }
 
-    Object.assign(settings, data);
-    await settings.save();
+  private mapToMessageEntity(doc: any): Message {
+    return new Message(
+      doc._id.toString(),
+      doc.conversation_id,
+      doc.sender_id,
+      doc.sender_name,
+      doc.content,
+      doc.read,
+      doc.sender_avatar,
+      doc.created_at,
+      doc.updated_at
+    );
+  }
 
-    return settings.toObject();
+  private buildPaginationResult<T>(
+    data: T[],
+    total: number,
+    page: number,
+    limit: number
+  ): IPaginationResult<T> {
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        current_page: page,
+        total_pages: totalPages,
+        total_items: total,
+        limit,
+        has_next: page < totalPages,
+        has_prev: page > 1,
+      },
+    };
   }
 }

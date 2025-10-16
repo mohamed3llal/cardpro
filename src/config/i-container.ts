@@ -63,20 +63,25 @@ import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
 import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
 
 // messaging
-import { MessagingRepository } from "@infrastructure/database/repositories/MessagingRepository";
-import { GetConversationsUseCase } from "@application/use-cases/messaging/GetConversations";
-import { StartConversationUseCase } from "@application/use-cases/messaging/StartConversation";
-import { SendMessageUseCase } from "@application/use-cases/messaging/SendMessage";
-import { GetMessagesUseCase } from "@application/use-cases/messaging/GetMessages";
-import { MessagingController } from "@presentation/controllers/MessagingController";
+import { MessagingRepository } from "../infrastructure/database/repositories/MessagingRepository";
+
+// Use cases
+import { StartConversation } from "../application/use-cases/messaging/StartConversation";
+import { GetConversations } from "../application/use-cases/messaging/GetConversations";
+import { GetMessages } from "../application/use-cases/messaging/GetMessages";
+import { SendMessage } from "../application/use-cases/messaging/SendMessage";
+import { MarkMessagesAsRead } from "../application/use-cases/messaging/MarkMessagesAsRead";
+import { DeleteConversation } from "../application/use-cases/messaging/DeleteConversation";
+
+// Controllers
+import { MessagingController } from "../presentation/controllers/MessagingController";
+import { PaginatedUsersDTO } from "../application/dtos/UserDTO";
 
 export class DIContainer {
   private static instance: DIContainer;
 
   // Repositories
-  public readonly cardRepository: CardRepository;
   public readonly analyticsRepository: AnalyticsRepository;
-  public readonly userRepository: UserRepository;
   public readonly domainRepository: DomainRepository;
 
   // Services
@@ -146,19 +151,21 @@ export class DIContainer {
   public readonly changeUserRoleUseCase: ChangeUserRole;
   public readonly updateLastLoginUseCase: UpdateLastLogin;
 
-  // Messaging
-  // Messaging Repository
-  public readonly messagingRepository: MessagingRepository;
-
-  // Messaging Use Cases
-  public readonly getConversationsUseCase: GetConversationsUseCase;
-  public readonly startConversationUseCase: StartConversationUseCase;
-  public readonly sendMessageUseCase: SendMessageUseCase;
-  public readonly getMessagesUseCase: GetMessagesUseCase;
-
-  // Messaging Controller
   public readonly messagingController: MessagingController;
 
+  private messagingRepository: MessagingRepository;
+  private cardRepository: CardRepository;
+  private userRepository: UserRepository;
+
+  // Use cases
+  private startConversationUseCase: StartConversation;
+  private getConversationsUseCase: GetConversations;
+  private getMessagesUseCase: GetMessages;
+  private sendMessageUseCase: SendMessage;
+  private markMessagesAsReadUseCase: MarkMessagesAsRead;
+  private deleteConversationUseCase: DeleteConversation;
+
+  // Controllers
   private constructor() {
     // Initialize Repositories
     this.cardRepository = new CardRepository();
@@ -320,28 +327,39 @@ export class DIContainer {
       this.rejectUserVerificationUseCase
     );
 
-    // Initialize Messaging Repository
     this.messagingRepository = new MessagingRepository();
 
-    // Initialize Messaging Use Cases
-    this.getConversationsUseCase = new GetConversationsUseCase(
+    // Initialize use cases
+    this.startConversationUseCase = new StartConversation(
+      this.messagingRepository,
+      this.cardRepository,
+      this.userRepository
+    );
+
+    this.getConversationsUseCase = new GetConversations(
       this.messagingRepository
     );
 
-    this.startConversationUseCase = new StartConversationUseCase(
+    this.getMessagesUseCase = new GetMessages(this.messagingRepository);
+
+    this.sendMessageUseCase = new SendMessage(this.messagingRepository);
+
+    this.markMessagesAsReadUseCase = new MarkMessagesAsRead(
       this.messagingRepository
     );
 
-    this.sendMessageUseCase = new SendMessageUseCase(this.messagingRepository);
-    this.getMessagesUseCase = new GetMessagesUseCase(this.messagingRepository);
+    this.deleteConversationUseCase = new DeleteConversation(
+      this.messagingRepository
+    );
 
-    // Initialize Messaging Controller
+    // Initialize controllers
     this.messagingController = new MessagingController(
-      this.getConversationsUseCase,
       this.startConversationUseCase,
-      this.sendMessageUseCase,
+      this.getConversationsUseCase,
       this.getMessagesUseCase,
-      this.messagingRepository
+      this.sendMessageUseCase,
+      this.markMessagesAsReadUseCase,
+      this.deleteConversationUseCase
     );
   }
 

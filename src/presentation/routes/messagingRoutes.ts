@@ -1,87 +1,72 @@
+// src/presentation/routes/messagingRoutes.ts
 import { Router } from "express";
 import { MessagingController } from "../controllers/MessagingController";
-import { authMiddleware } from "@infrastructure/middleware/authMiddleware";
-import { rateLimitMiddleware } from "@infrastructure/middleware/rateLimitMiddleware";
-import { validate } from "@infrastructure/middleware/validator";
-import {
-  startConversationSchema,
-  sendMessageSchema,
-  archiveConversationSchema,
-  updateNotificationSettingsSchema,
-} from "../validators/messagingValidator";
+import { authMiddleware } from "../../infrastructure/middleware/authMiddleware";
+import { validate } from "../../infrastructure/middleware/validator";
+import { messagingValidator } from "../validators/messagingValidator";
+import { rateLimiter } from "../../infrastructure/middleware/rateLimiter";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
 
-export function createMessagingRoutes(
-  messagingController: MessagingController,
+export const createMessagingRoutes = (
+  controller: MessagingController,
   authService: IAuthService
-): Router {
+): Router => {
   const router = Router();
+
+  // Apply authentication to all routes
   const auth = authMiddleware(authService);
 
-  const conversationLimiter = rateLimitMiddleware({
-    windowMs: 60000,
-    max: 100,
-  });
-
-  const messageLimiter = rateLimitMiddleware({
-    windowMs: 60000,
-    max: 60,
-  });
-
   // Conversations
-  router.get("/", auth, conversationLimiter, (req, res, next) =>
-    messagingController.getConversations(req, res, next)
-  );
-
-  router.get("/:id", auth, conversationLimiter, (req, res, next) =>
-    messagingController.getConversationById(req, res, next)
-  );
-
   router.post(
     "/",
     auth,
-    conversationLimiter,
-    validate(startConversationSchema),
-    (req, res, next) => messagingController.startConversation(req, res, next)
+    validate(messagingValidator.createConversation),
+    controller.createConversation
   );
 
-  router.put(
-    "/:id/archive",
+  router.get(
+    "/",
     auth,
-    conversationLimiter,
-    validate(archiveConversationSchema),
-    (req, res, next) => messagingController.archiveConversation(req, res, next)
+    validate(messagingValidator.pagination),
+    controller.getAllConversations
+  );
+
+  router.get(
+    "/:conversationId",
+    auth,
+    validate(messagingValidator.conversationId),
+    controller.getConversationById
+  );
+
+  router.delete(
+    "/:conversationId",
+    auth,
+    validate(messagingValidator.conversationId),
+    controller.removeConversation
   );
 
   // Messages
   router.get(
     "/:conversationId/messages",
     auth,
-    conversationLimiter,
-    (req, res, next) => messagingController.getMessages(req, res, next)
+    validate(messagingValidator.getMessages),
+    controller.getConversationMessages
   );
 
   router.post(
-    "/:conversationId/messages",
+    "/messages",
     auth,
-    messageLimiter,
-    validate(sendMessageSchema),
-    (req, res, next) => messagingController.sendMessage(req, res, next)
-  );
-
-  // Notifications
-  router.get("/unread-count", auth, conversationLimiter, (req, res, next) =>
-    messagingController.getUnreadCount(req, res, next)
+    rateLimiter.messaging, // Rate limit: 60 messages per minute
+    validate(messagingValidator.sendMessage),
+    controller.sendNewMessage
   );
 
   router.put(
-    "/notifications",
+    "/:conversationId/read",
     auth,
-    conversationLimiter,
-    validate(updateNotificationSettingsSchema),
-    (req, res, next) =>
-      messagingController.updateNotificationSettings(req, res, next)
+    validate(messagingValidator.conversationId),
+    controller.markAsRead
   );
 
   return router;
-}
+};

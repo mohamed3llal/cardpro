@@ -1,244 +1,206 @@
-import { Response, NextFunction } from "express";
+import { Request, Response } from "express";
+import { StartConversation } from "../../application/use-cases/messaging/StartConversation";
+import { GetConversations } from "../../application/use-cases/messaging/GetConversations";
+import { GetMessages } from "../../application/use-cases/messaging/GetMessages";
+import { SendMessage } from "../../application/use-cases/messaging/SendMessage";
+import { MarkMessagesAsRead } from "../../application/use-cases/messaging/MarkMessagesAsRead";
+import { DeleteConversation } from "../../application/use-cases/messaging/DeleteConversation";
+import { ResponseHandler } from "../../shared/utils/ResponseHandler";
+import { AppError } from "../../shared/errors/AppError";
 import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
-import { GetConversationsUseCase } from "@application/use-cases/messaging/GetConversations";
-import { StartConversationUseCase } from "@application/use-cases/messaging/StartConversation";
-import { SendMessageUseCase } from "@application/use-cases/messaging/SendMessage";
-import { GetMessagesUseCase } from "@application/use-cases/messaging/GetMessages";
-import { IMessagingRepository } from "@domain/interfaces/IMessagingRepository";
-import { logger } from "@config/logger";
 
 export class MessagingController {
   constructor(
-    private readonly getConversationsUseCase: GetConversationsUseCase,
-    private readonly startConversationUseCase: StartConversationUseCase,
-    private readonly sendMessageUseCase: SendMessageUseCase,
-    private readonly getMessagesUseCase: GetMessagesUseCase,
-    private readonly messagingRepository: IMessagingRepository
+    private startConversation: StartConversation,
+    private getConversations: GetConversations,
+    private getMessages: GetMessages,
+    private sendMessage: SendMessage,
+    private markMessagesAsRead: MarkMessagesAsRead,
+    private deleteConversation: DeleteConversation
   ) {}
 
-  /**
-   * GET /api/v1/messages/conversations
-   */
-  async getConversations(
+  // POST /api/v1/conversations
+  createConversation = async (
     req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+    res: Response
+  ): Promise<void> => {
     try {
-      const userId = req.userId!;
-      const { page = 1, limit = 20, filter = "all" } = req.query;
-
-      const result = await this.getConversationsUseCase.execute({
-        userId,
-        filter: filter as any,
-        page: parseInt(page as string),
-        limit: Math.min(parseInt(limit as string), 100),
-      });
-
-      res.status(200).json(result);
-    } catch (error) {
-      logger.error("Error fetching conversations:", error);
-      next(error);
-    }
-  }
-
-  /**
-   * GET /api/v1/messages/conversations/:id
-   */
-  async getConversationById(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-
-      const conversation: any =
-        await this.messagingRepository.getConversationById(id);
-
-      if (!conversation) {
-        res.status(404).json({
-          error: "NOT_FOUND",
-          message: "Conversation not found",
-        });
-        return;
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
       }
 
-      // Authorization check
-      if (
-        conversation.user_id !== userId &&
-        conversation.other_participant_id !== userId
-      ) {
-        res.status(403).json({
-          error: "FORBIDDEN",
-          message: "Access denied",
-        });
-        return;
-      }
-
-      res.status(200).json({ conversation });
-    } catch (error) {
-      logger.error("Error fetching conversation:", error);
-      next(error);
-    }
-  }
-
-  /**
-   * POST /api/v1/messages/conversations
-   */
-  async startConversation(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId!;
-      const { business_id, initial_message } = req.body;
-
-      const result = await this.startConversationUseCase.execute({
+      const conversation = await this.startConversation.execute(
         userId,
-        businessId: business_id,
-        initialMessage: initial_message,
-      });
-
-      res.status(201).json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      logger.error("Error starting conversation:", error);
-      next(error);
-    }
-  }
-
-  /**
-   * PUT /api/v1/messages/conversations/:id/archive
-   */
-  async archiveConversation(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId!;
-      const { id } = req.params;
-      const { is_archived } = req.body;
-
-      const conversation = await this.messagingRepository.archiveConversation(
-        id,
-        userId,
-        is_archived
+        req.body
       );
 
-      res.status(200).json({
-        success: true,
-        data: { conversation },
+      ResponseHandler.created(res, {
+        conversation: conversation.toDTO(),
       });
-    } catch (error) {
-      logger.error("Error archiving conversation:", error);
-      next(error);
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
     }
-  }
+  };
 
-  /**
-   * GET /api/v1/messages/conversations/:conversationId/messages
-   */
-  async getMessages(
+  // GET /api/v1/conversations
+  getAllConversations = async (
     req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+    res: Response
+  ): Promise<void> => {
     try {
-      const userId = req.userId!;
-      const { conversationId } = req.params;
-      const { page = 1, limit = 50 } = req.query;
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
+      }
 
-      const result = await this.getMessagesUseCase.execute({
-        conversationId,
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+      console.log(page, limit, userId);
+      const result = await this.getConversations.execute(userId, {
+        page,
+        limit,
+      });
+
+      console.log(res, {
+        conversations: result.data.map((c) => c.toDTO()),
+        pagination: result.pagination,
+      });
+
+      ResponseHandler.success(res, {
+        conversations: result.data.map((c) => c.toDTO()),
+        pagination: result.pagination,
+      });
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
+    }
+  };
+
+  // GET /api/v1/conversations/:conversationId
+  getConversationById = async (
+    req: AuthRequest,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const { conversationId } = req.params;
+
+      // This would need a new use case, but for now:
+      const conversation = await this.getConversations.execute(userId, {
+        page: 1,
+        limit: 1,
+      });
+      const found = conversation.data.find((c) => c.id === conversationId);
+
+      if (!found) {
+        throw new AppError("Conversation not found", 404);
+      }
+
+      ResponseHandler.success(res, {
+        conversation: found.toDTO(),
+      });
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
+    }
+  };
+
+  // DELETE /api/v1/conversations/:conversationId
+  removeConversation = async (
+    req: AuthRequest,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const { conversationId } = req.params;
+
+      await this.deleteConversation.execute(userId, conversationId);
+
+      ResponseHandler.noContent(res);
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
+    }
+  };
+
+  // GET /api/v1/conversations/:conversationId/messages
+  getConversationMessages = async (
+    req: AuthRequest,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const { conversationId } = req.params;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+
+      const result = await this.getMessages.execute(userId, conversationId, {
+        page,
+        limit,
+      });
+
+      ResponseHandler.success(res, {
+        messages: result.data.map((m: any) => m.toDTO()),
+        pagination: result.pagination,
+      });
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
+    }
+  };
+
+  // POST /api/v1/messages
+  sendNewMessage = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.userId;
+      const userName =
+        req.userEmail?.slice(0, req.userEmail.indexOf("@")) || "";
+      const userAvatar = "";
+
+      if (!userId || !userName) {
+        throw new AppError("Unauthorized", 401);
+      }
+
+      const message = await this.sendMessage.execute(
         userId,
-        page: parseInt(page as string),
-        limit: Math.min(parseInt(limit as string), 100),
+        userName,
+        userAvatar,
+        req.body
+      );
+
+      ResponseHandler.created(res, {
+        message: message.toDTO(),
       });
-
-      res.status(200).json(result);
-    } catch (error) {
-      logger.error("Error fetching messages:", error);
-      next(error);
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
     }
-  }
+  };
 
-  /**
-   * POST /api/v1/messages/conversations/:conversationId/messages
-   */
-  async sendMessage(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
+  // PUT /api/v1/conversations/:conversationId/read
+  markAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const userId = req.userId!;
+      const userId = req.userId;
+      if (!userId) {
+        throw new AppError("Unauthorized", 401);
+      }
+
       const { conversationId } = req.params;
-      const { content, type = "text", attachments = [] } = req.body;
 
-      const message = await this.sendMessageUseCase.execute({
-        conversationId,
-        senderId: userId,
-        content,
-        type,
-        attachments,
-      });
+      await this.markMessagesAsRead.execute(userId, conversationId);
 
-      res.status(201).json({
-        success: true,
-        data: { message },
-      });
-    } catch (error) {
-      logger.error("Error sending message:", error);
-      next(error);
+      ResponseHandler.noContent(res);
+    } catch (error: any | AppError) {
+      ResponseHandler.error(res, error);
     }
-  }
-
-  /**
-   * GET /api/v1/messages/unread-count
-   */
-  async getUnreadCount(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId!;
-      const result = await this.messagingRepository.getUnreadCount(userId);
-      res.status(200).json(result);
-    } catch (error) {
-      logger.error("Error getting unread count:", error);
-      next(error);
-    }
-  }
-
-  /**
-   * PUT /api/v1/messages/notifications
-   */
-  async updateNotificationSettings(
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> {
-    try {
-      const userId = req.userId!;
-      const data = req.body;
-
-      const settings =
-        await this.messagingRepository.updateNotificationSettings(userId, data);
-
-      res.status(200).json({
-        success: true,
-        data: { settings },
-      });
-    } catch (error) {
-      logger.error("Error updating notification settings:", error);
-      next(error);
-    }
-  }
+  };
 }

@@ -4,6 +4,11 @@ import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+
+// import { createClient } from "@supabase/supabase-js";
+// import { MessagingContainer } from "@/config/messaging-container";
+// import { createMessagingRoutes } from "@/presentation/routes/messagingRoutes";
+
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { DIContainer } from "./config/i-container";
@@ -16,6 +21,7 @@ class Server {
   private port: number;
   private diContainer: DIContainer;
 
+  // Initialize Supabase
   constructor() {
     this.app = express();
     this.port = Number(env.PORT || 3000);

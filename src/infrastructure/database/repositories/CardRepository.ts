@@ -1,4 +1,3 @@
-// src/infrastructure/repositories/CardRepository.ts
 import {
   ICardRepository,
   FindOptions,

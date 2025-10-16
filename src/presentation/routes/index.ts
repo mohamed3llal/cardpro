@@ -19,7 +19,6 @@ import { VerificationController } from "../controllers/VerificationController";
 import { createAdminVerificationRoutes } from "./verificationRoutes";
 import { createMessagingRoutes } from "./messagingRoutes";
 import { MessagingController } from "@presentation/controllers/MessagingController";
-import { createNotificationRoutes } from "./notificationRoutes";
 
 export const createRoutes = (
   cardController: CardController,
@@ -82,9 +81,5 @@ export const createRoutes = (
     createMessagingRoutes(MessagingController, authService)
   );
 
-  router.use(
-    "/notifications",
-    createNotificationRoutes(MessagingController, authService)
-  );
   return router;
 };
