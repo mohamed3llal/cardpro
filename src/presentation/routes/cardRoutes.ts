@@ -14,7 +14,7 @@ export const createCardRoutes = (
 
   router.get("/cards", auth, cardController.getUserCards);
 
-  router.get("/cards/:cardId", auth, cardController.getCardById);
+  router.get("/cards/:cardId", cardController.getCardById);
 
   router.put("/cards/:cardId", auth, cardController.updateCard);
 

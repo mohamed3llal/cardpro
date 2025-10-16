@@ -40,6 +40,10 @@ export interface ICardRepository {
     query: any,
     options?: FindOptions
   ): Promise<Card[]>;
+  countActiveVerifiedUserCards(
+    query: any,
+    options?: FindOptions
+  ): Promise<number>;
   findOne(query: any): Promise<Card | null>;
   find(query: any, verified?: boolean, options?: FindOptions): Promise<Card[]>;
 
@@ -87,4 +91,7 @@ export interface FindOptions {
   limit?: number;
   skip?: number;
   select?: string[];
+  userLocation?: { latitude: number; longitude: number };
+  radius?: number;
+  radiusKm?: number;
 }

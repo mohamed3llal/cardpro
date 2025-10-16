@@ -3,6 +3,7 @@
 export interface Location {
   lat: number;
   lng: number;
+  distance?: number; // ✅ Added for search results
 }
 
 export interface SocialLinks {
@@ -18,7 +19,7 @@ export interface CardProps {
   user_id: string;
   title: string;
   company?: string;
-  logo?: string; // ✅ ADD THIS
+  logo?: string;
   domain_key: string;
   subdomain_key?: string;
   description?: string;
@@ -36,13 +37,10 @@ export interface CardProps {
   is_public?: boolean;
   scans?: number;
   views?: number;
-
-  // ✅ ADD RATING SUPPORT (or remove from sorting)
   rating?: {
     average: number;
     count: number;
   };
-
   user?: {
     firstName: string;
     lastName: string;

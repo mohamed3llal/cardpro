@@ -5,7 +5,7 @@ import { AppError } from "@shared/errors/AppError";
 export class GetCardByIdUseCase {
   constructor(private cardRepository: ICardRepository) {}
 
-  async execute(cardId: string, userId: string): Promise<Card> {
+  async execute(cardId: string): Promise<Card> {
     // Validate cardId format
     if (!cardId || cardId.trim() === "") {
       throw new AppError("Card ID is required", 400);
@@ -23,11 +23,6 @@ export class GetCardByIdUseCase {
     // Check if card exists
     if (!card) {
       throw new AppError("Card not found", 404);
-    }
-
-    // Check authorization - user can only access their own cards
-    if (card.userId !== userId) {
-      throw new AppError("Unauthorized access to this card", 403);
     }
 
     return card;

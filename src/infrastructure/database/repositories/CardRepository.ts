@@ -68,107 +68,135 @@ export class CardRepository implements ICardRepository {
     }
   }
 
-  // async findActiveVerifiedUserCards(
-  //   query: any,
-  //   options?: FindOptions
-  // ): Promise<Card[]> {
-  //   try {
-  //     // ✅ FIX 1: Convert user_id string to ObjectId for lookup
-  //     // ✅ FIX 2: Use correct collection name (Mongoose usually lowercases and pluralizes)
-  //     const mongooseQuery = CardModel.aggregate([
-  //       { $match: query },
-  //       {
-  //         $addFields: {
-  //           user_id_obj: { $toObjectId: "$user_id" }, // ✅ Convert string to ObjectId
-  //         },
-  //       },
-  //       {
-  //         $lookup: {
-  //           from: "users", // ✅ Check your actual collection name with: db.getCollectionNames()
-  //           localField: "user_id_obj", // ✅ Use converted ObjectId
-  //           foreignField: "_id",
-  //           as: "user",
-  //         },
-  //       },
-  //       { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }, // ✅ Fail if user not found
-  //       {
-  //         $match: {
-  //           "user.domainVerified": true,
-  //           "user.isActive": true,
-  //         },
-  //       },
-  //       ...(options?.sort ? [{ $sort: options.sort }] : []),
-  //       ...(options?.skip ? [{ $skip: options.skip }] : []),
-  //       ...(options?.limit ? [{ $limit: options.limit }] : []),
-  //     ]);
-
-  //     const results = await mongooseQuery.exec();
-
-  //     console.log("✅ Aggregation returned:", results.length, "cards");
-
-  //     return results.map((doc) => {
-  //       // ✅ Map the aggregation result to your Card entity
-  //       const entity: any = this.mapToEntity(doc);
-
-  //       // ✅ Attach user data
-  //       entity.props.user = {
-  //         firstName: doc.user.firstName,
-  //         lastName: doc.user.lastName,
-  //         avatar: doc.user.avatar,
-  //         email: doc.user.email,
-  //         domainVerified: doc.user.domainVerified,
-  //         domainKey: doc.user.domainKey,
-  //         subcategoryKey: doc.user.subcategoryKey,
-  //       };
-
-  //       return entity;
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ Error in findActiveVerifiedUserCards:", error);
-  //     throw error;
-  //   }
-  // }
-
   async findActiveVerifiedUserCards(
     query: any,
     options?: FindOptions
   ): Promise<Card[]> {
     try {
-      // ✅ FIX 1: Convert user_id string to ObjectId for lookup
-      // ✅ FIX 2: Use correct collection name (Mongoose usually lowercases and pluralizes)
-      const mongooseQuery = CardModel.aggregate([
+      const pipeline: any[] = [
         { $match: query },
         {
           $addFields: {
-            user_id_obj: { $toObjectId: "$user_id" }, // ✅ Convert string to ObjectId
+            user_id_obj: {
+              $cond: {
+                if: { $eq: [{ $type: "$user_id" }, "objectId"] },
+                then: "$user_id",
+                else: { $toObjectId: "$user_id" },
+              },
+            },
           },
         },
         {
           $lookup: {
-            from: "users", // ✅ Check your actual collection name with: db.getCollectionNames()
-            localField: "user_id_obj", // ✅ Use converted ObjectId
+            from: "users",
+            localField: "user_id_obj",
             foreignField: "_id",
             as: "user",
           },
         },
-        { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }, // ✅ Fail if user not found
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
         {
           $match: {
             "user.domainVerified": true,
             "user.isActive": true,
           },
         },
-        ...(options?.sort ? [{ $sort: options.sort }] : []),
-        ...(options?.skip ? [{ $skip: options.skip }] : []),
-        ...(options?.limit ? [{ $limit: options.limit }] : []),
-      ]);
+      ];
 
-      const results = await mongooseQuery.exec();
+      // ✅ Calculate distance using Haversine formula
+      if (options?.userLocation) {
+        const { latitude, longitude } = options.userLocation;
+        const radiusKm = options.radiusKm || 10;
 
-      console.log("✅ Aggregation returned:", results.length, "cards");
+        pipeline.push({
+          $addFields: {
+            distance: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$location", null] },
+                    { $ne: ["$location.lat", null] },
+                    { $ne: ["$location.lng", null] },
+                  ],
+                },
+                then: {
+                  $let: {
+                    vars: {
+                      lat1: { $degreesToRadians: latitude },
+                      lon1: { $degreesToRadians: longitude },
+                      lat2: { $degreesToRadians: "$location.lat" },
+                      lon2: { $degreesToRadians: "$location.lng" },
+                    },
+                    in: {
+                      $multiply: [
+                        6371, // Earth's radius in km
+                        {
+                          $acos: {
+                            $min: [
+                              1,
+                              {
+                                $max: [
+                                  -1,
+                                  {
+                                    $add: [
+                                      {
+                                        $multiply: [
+                                          { $sin: "$$lat1" },
+                                          { $sin: "$$lat2" },
+                                        ],
+                                      },
+                                      {
+                                        $multiply: [
+                                          { $cos: "$$lat1" },
+                                          { $cos: "$$lat2" },
+                                          {
+                                            $cos: {
+                                              $subtract: ["$$lon2", "$$lon1"],
+                                            },
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                else: 999999, // Large number for cards without location
+              },
+            },
+          },
+        });
+
+        // ✅ Filter by radius
+        pipeline.push({
+          $match: {
+            distance: { $lte: radiusKm },
+          },
+        });
+      }
+
+      // ✅ Apply sorting
+      if (options?.sort) {
+        pipeline.push({ $sort: options.sort });
+      }
+
+      // ✅ Pagination
+      if (options?.skip) {
+        pipeline.push({ $skip: options.skip });
+      }
+      if (options?.limit) {
+        pipeline.push({ $limit: options.limit });
+      }
+
+      const results = await CardModel.aggregate(pipeline).exec();
 
       return results.map((doc) => {
-        // ✅ Map the aggregation result to your Card entity
         const entity: any = this.mapToEntity(doc);
 
         // ✅ Attach user data
@@ -182,11 +210,144 @@ export class CardRepository implements ICardRepository {
           subcategoryKey: doc.user.subcategoryKey,
         };
 
+        // ✅ Add calculated distance to location
+        if (doc.distance !== undefined && doc.distance !== 999999) {
+          if (!entity.props.location) {
+            entity.props.location = {
+              lat: doc.location.lat,
+              lng: doc.location.lng,
+            };
+          }
+          entity.props.location.distance = Math.round(doc.distance * 10) / 10;
+        }
+
         return entity;
       });
     } catch (error) {
       console.error("❌ Error in findActiveVerifiedUserCards:", error);
       throw error;
+    }
+  }
+
+  async countActiveVerifiedUserCards(
+    query: any,
+    options?: FindOptions
+  ): Promise<number> {
+    try {
+      const pipeline: any[] = [
+        { $match: query },
+        {
+          $addFields: {
+            user_id_obj: {
+              $cond: {
+                if: { $eq: [{ $type: "$user_id" }, "objectId"] },
+                then: "$user_id",
+                else: { $toObjectId: "$user_id" },
+              },
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user_id_obj",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+        {
+          $match: {
+            "user.domainVerified": true,
+            "user.isActive": true,
+          },
+        },
+      ];
+
+      // Apply same distance filtering for accurate count
+      if (options?.userLocation) {
+        const { latitude, longitude } = options.userLocation;
+        const radiusKm = options.radiusKm || 10;
+
+        pipeline.push({
+          $addFields: {
+            distance: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $ne: ["$location", null] },
+                    { $ne: ["$location.lat", null] },
+                    { $ne: ["$location.lng", null] },
+                  ],
+                },
+                then: {
+                  $let: {
+                    vars: {
+                      lat1: { $degreesToRadians: latitude },
+                      lon1: { $degreesToRadians: longitude },
+                      lat2: { $degreesToRadians: "$location.lat" },
+                      lon2: { $degreesToRadians: "$location.lng" },
+                    },
+                    in: {
+                      $multiply: [
+                        6371,
+                        {
+                          $acos: {
+                            $min: [
+                              1,
+                              {
+                                $max: [
+                                  -1,
+                                  {
+                                    $add: [
+                                      {
+                                        $multiply: [
+                                          { $sin: "$$lat1" },
+                                          { $sin: "$$lat2" },
+                                        ],
+                                      },
+                                      {
+                                        $multiply: [
+                                          { $cos: "$$lat1" },
+                                          { $cos: "$$lat2" },
+                                          {
+                                            $cos: {
+                                              $subtract: ["$$lon2", "$$lon1"],
+                                            },
+                                          },
+                                        ],
+                                      },
+                                    ],
+                                  },
+                                ],
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+                else: 999999,
+              },
+            },
+          },
+        });
+
+        pipeline.push({
+          $match: {
+            distance: { $lte: radiusKm },
+          },
+        });
+      }
+
+      pipeline.push({ $count: "total" });
+
+      const result = await CardModel.aggregate(pipeline).exec();
+      return result[0]?.total || 0;
+    } catch (error) {
+      console.error("❌ Error in countActiveVerifiedUserCards:", error);
+      return 0;
     }
   }
 
@@ -198,8 +359,6 @@ export class CardRepository implements ICardRepository {
     try {
       // Method 1: Get the actual collection name from the model
       const userCollectionName = mongoose.model("User").collection.name;
-
-      console.log("📦 Using collection name:", userCollectionName);
 
       const mongooseQuery = CardModel.aggregate([
         { $match: query },
@@ -229,7 +388,6 @@ export class CardRepository implements ICardRepository {
       ]);
 
       const results = await mongooseQuery.exec();
-      console.log("✅ Found", results.length, "verified active user cards");
 
       return results.map((doc) => {
         const entity: any = this.mapToEntity(doc);

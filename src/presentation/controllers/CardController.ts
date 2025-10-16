@@ -127,21 +127,10 @@ export class CardController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.userId;
+      // const userId = req.userId;
       const { cardId } = req.params;
 
-      if (!userId) {
-        res.status(401).json({
-          success: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "Authentication required",
-          },
-        });
-        return;
-      }
-
-      const card = await this.getCardByIdUseCase.execute(cardId, userId);
+      const card = await this.getCardByIdUseCase.execute(cardId);
 
       res.status(200).json({
         success: true,

@@ -2,7 +2,7 @@ export interface CreateCardDTO {
   title: string;
   company?: string;
   domain_key: string;
-  subdomain_key: string[];
+  subdomain_key: string;
   description: string;
   mobile_phones: string[];
   landline_phones?: string[];
@@ -36,7 +36,7 @@ export interface CardResponseDTO {
   title: string;
   company?: string;
   domain_key: string;
-  subdomain_key: string[];
+  subdomain_key: string;
   description: string;
   mobile_phones: string[];
   landline_phones: string[];

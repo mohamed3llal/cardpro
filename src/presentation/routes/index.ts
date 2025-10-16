@@ -13,10 +13,12 @@ import { AuthController } from "@presentation/controllers/AuthController";
 import { UserController } from "@presentation/controllers/UserController";
 import { DomainController } from "@presentation/controllers/DomainController";
 import { createDomainRoutes } from "./domainRoutes";
-// import { createBusinessRoutes } from "./businessesRoutes";
-// import { BusinessController } from "@presentation/controllers/BusinessController";
+import { createBusinessRoutes } from "./businessRoutes";
+import { BusinessController } from "@presentation/controllers/BusinessController";
 import { VerificationController } from "../controllers/VerificationController";
 import { createAdminVerificationRoutes } from "./verificationRoutes";
+import { createMessagingRoutes } from "./messagingRoutes";
+import { MessagingController } from "@presentation/controllers/MessagingController";
 
 export const createRoutes = (
   cardController: CardController,
@@ -26,8 +28,9 @@ export const createRoutes = (
   authService: IAuthService,
   domainController: DomainController,
   adminController: AdminController,
-  // businessController: BusinessController,
-  verificationController: VerificationController
+  businessController: BusinessController,
+  verificationController: VerificationController,
+  messagingController: MessagingController
 ): Router => {
   const router = Router();
 
@@ -43,11 +46,8 @@ export const createRoutes = (
   // Card routes
   router.use("/dashboard", createCardRoutes(cardController, authService));
 
-  // Business routes
-  // router.use(
-  //   "/businesses",
-  //   createBusinessRoutes(businessController, authService)
-  // );
+  // Business routes (Public API) - ADD THIS
+  router.use("/businesses", createBusinessRoutes(businessController));
 
   // Dashboard routes
   router.use(
@@ -75,5 +75,10 @@ export const createRoutes = (
     createAdminVerificationRoutes(verificationController, authService)
   );
 
+  // Admin routes
+  router.use(
+    "/messages",
+    createMessagingRoutes(messagingController, authService)
+  );
   return router;
 };

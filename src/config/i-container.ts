@@ -1,3 +1,4 @@
+import { *aspromClient } from 'prom-client';
 import dotenv from "dotenv";
 dotenv.config();
 import { env } from "./env";
@@ -40,14 +41,14 @@ import { DomainController } from "@presentation/controllers/DomainController";
 import { AdminService } from "@infrastructure/services/AdminService";
 import { AdminController } from "@presentation/controllers/AdminController";
 
-// import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
-// import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
-// import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
-// import { GetSimilarBusinesses } from "@application/use-cases/business/GetSimilarBusinesses";
-// import { RecordView } from "@application/use-cases/business/RecordView";
-// import { RecordScan } from "@application/use-cases/business/RecordScan";
-// import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
-// import { BusinessController } from "@presentation/controllers/BusinessController";
+// Add to imports section:
+import { SearchBusinesses } from "@application/use-cases/business/SearchBusinesses";
+import { GetFeaturedBusinessesUseCase } from "@application/use-cases/business/GetFeaturedBusinesses";
+import { GetBusinessById } from "@application/use-cases/business/GetBusinessById";
+import { RecordView } from "@application/use-cases/business/RecordView";
+import { RecordScan } from "@application/use-cases/business/RecordScan";
+import { RecordContactClick } from "@application/use-cases/business/RecordContactClick";
+import { BusinessController } from "@presentation/controllers/BusinessController";
 
 import { SubmitDomainVerification } from "@application/use-cases/verification/SubmitDomainVerification";
 import { GetPendingVerifications } from "@application/use-cases/verification/GetPendingVerifications";
@@ -61,6 +62,10 @@ import { GetUserProfile } from "@application/use-cases/user/GetUserProfile";
 import { ToggleUserStatus } from "@application/use-cases/user/ToggleUserStatus";
 import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
 import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
+
+// messaging
+import { MessagingController } from "@presentation/controllers/MessagingController";
+
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -105,6 +110,7 @@ export class DIContainer {
   public readonly authController: AuthController;
   public readonly userController: UserController;
   public readonly domainController: DomainController;
+  public readonly businessController: BusinessController;
 
   // Config
   private readonly googleClientId: string;
@@ -114,15 +120,12 @@ export class DIContainer {
   public readonly adminController: AdminController;
 
   // Business Use Cases
-  // public readonly searchBusinessesUseCase: SearchBusinesses;
-  // public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase;
-  // public readonly getBusinessByIdUseCase: GetBusinessById;
-  // public readonly getSimilarBusinessesUseCase: GetSimilarBusinesses;
-  // public readonly recordViewUseCase: RecordView;
-  // public readonly recordScanUseCase: RecordScan;
-  // public readonly recordContactClickUseCase: RecordContactClick;
-  // // Controllers
-  // public readonly businessController: BusinessController;
+  public readonly searchBusinessesUseCase: SearchBusinesses;
+  public readonly getFeaturedBusinessesUseCase: GetFeaturedBusinessesUseCase;
+  public readonly getBusinessByIdUseCase: GetBusinessById;
+  public readonly recordViewUseCase: RecordView;
+  public readonly recordScanUseCase: RecordScan;
+  public readonly recordContactClickUseCase: RecordContactClick;
 
   // Verification Use Cases
   public readonly submitDomainVerificationUseCase: SubmitDomainVerification;
@@ -139,6 +142,9 @@ export class DIContainer {
   public readonly toggleUserStatusUseCase: ToggleUserStatus;
   public readonly changeUserRoleUseCase: ChangeUserRole;
   public readonly updateLastLoginUseCase: UpdateLastLogin;
+
+  // Messaging
+  public readonly messagingController: MessagingController;
 
   private constructor() {
     // Initialize Repositories
@@ -252,31 +258,29 @@ export class DIContainer {
       this.deleteSubcategoryUseCase
     );
 
-    // Initialize Business Use Cases
-    // this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
-    // this.getFeaturedBusinessesUseCase = new GetFeaturedBusinessesUseCase(
-    //   this.cardRepository
-    // );
-    // this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);
-    // this.getSimilarBusinessesUseCase = new GetSimilarBusinesses(
-    //   this.cardRepository
-    // );
-    // this.recordViewUseCase = new RecordView(this.cardRepository);
-    // this.recordScanUseCase = new RecordScan(this.cardRepository);
-    // this.recordContactClickUseCase = new RecordContactClick(
-    //   this.cardRepository
-    // );
+    // Initialize Business Use Cases (add after existing use case initialization)
+    this.searchBusinessesUseCase = new SearchBusinesses(this.cardRepository);
+    this.getFeaturedBusinessesUseCase = new GetFeaturedBusinessesUseCase(
+      this.cardRepository
+    );
+    this.getBusinessByIdUseCase = new GetBusinessById(this.cardRepository);
 
-    // // Initialize Business Controller
-    // this.businessController = new BusinessController(
-    //   this.searchBusinessesUseCase,
-    //   this.getFeaturedBusinessesUseCase,
-    //   this.getBusinessByIdUseCase,
-    //   this.getSimilarBusinessesUseCase,
-    //   this.recordViewUseCase,
-    //   this.recordScanUseCase,
-    //   this.recordContactClickUseCase
-    // );
+    this.recordViewUseCase = new RecordView(this.cardRepository);
+    this.recordScanUseCase = new RecordScan(this.cardRepository);
+    this.recordContactClickUseCase = new RecordContactClick(
+      this.cardRepository
+    );
+
+    // Initialize Business Controller (add after existing controller initialization)
+
+    this.businessController = new BusinessController(
+      this.searchBusinessesUseCase,
+      this.getFeaturedBusinessesUseCase,
+      this.getBusinessByIdUseCase,
+      this.recordViewUseCase,
+      this.recordScanUseCase,
+      this.recordContactClickUseCase
+    );
 
     // Initialize Verification Use Cases
     this.submitDomainVerificationUseCase = new SubmitDomainVerification(
@@ -302,6 +306,11 @@ export class DIContainer {
       this.approveUserVerificationUseCase,
       this.rejectUserVerificationUseCase
     );
+
+    // Messages
+    this.messageController = new MessageController(
+    );
+
   }
 
   static getInstance(): DIContainer {

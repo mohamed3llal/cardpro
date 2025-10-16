@@ -22,6 +22,15 @@ const SocialLinksSchema = new Schema(
   { _id: false }
 );
 
+// ✅ ADD Rating Schema
+const RatingSchema = new Schema(
+  {
+    average: { type: Number, default: 0, min: 0, max: 5 },
+    count: { type: Number, default: 0, min: 0 },
+  },
+  { _id: false }
+);
+
 const CardSchema = new Schema<ICardDocument>(
   {
     user_id: {
@@ -36,6 +45,10 @@ const CardSchema = new Schema<ICardDocument>(
     },
     company: {
       type: String,
+      trim: true,
+    },
+    logo: {
+      type: String, // ✅ ADDED
       trim: true,
     },
     domain_key: {
@@ -106,6 +119,10 @@ const CardSchema = new Schema<ICardDocument>(
     location: {
       type: LocationSchema,
     },
+    rating: {
+      type: RatingSchema, // ✅ ADDED
+      default: { average: 0, count: 0 },
+    },
     is_public: {
       type: Boolean,
       default: true,
@@ -128,14 +145,16 @@ const CardSchema = new Schema<ICardDocument>(
   }
 );
 
-// Indexes for common queries
+// Indexes
 CardSchema.index({ user_id: 1, created_at: -1 });
 CardSchema.index({ domain_key: 1, is_public: 1 });
 CardSchema.index({ created_at: -1 });
 CardSchema.index({ views: -1 });
 CardSchema.index({ scans: -1 });
+CardSchema.index({ "rating.average": -1 }); // ✅ ADDED
+CardSchema.index({ "location.lat": 1, "location.lng": 1 }); // ✅ ADDED for geo queries
 
-// Text index for search functionality (optional)
+// Text index for search
 CardSchema.index({
   title: "text",
   company: "text",
