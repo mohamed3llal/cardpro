@@ -11,7 +11,7 @@ import {
 } from "../validators/messagingValidator";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
 
-export function createMessagingRoutes(
+export function createNotificationRoutes(
   messagingController: MessagingController,
   authService: IAuthService
 ): Router {
@@ -27,47 +27,6 @@ export function createMessagingRoutes(
     windowMs: 60000,
     max: 60,
   });
-
-  // Conversations
-  router.get("/", auth, conversationLimiter, (req, res, next) =>
-    messagingController.getConversations(req, res, next)
-  );
-
-  router.get("/:id", auth, conversationLimiter, (req, res, next) =>
-    messagingController.getConversationById(req, res, next)
-  );
-
-  router.post(
-    "/",
-    auth,
-    conversationLimiter,
-    validate(startConversationSchema),
-    (req, res, next) => messagingController.startConversation(req, res, next)
-  );
-
-  router.put(
-    "/:id/archive",
-    auth,
-    conversationLimiter,
-    validate(archiveConversationSchema),
-    (req, res, next) => messagingController.archiveConversation(req, res, next)
-  );
-
-  // Messages
-  router.get(
-    "/:conversationId/messages",
-    auth,
-    conversationLimiter,
-    (req, res, next) => messagingController.getMessages(req, res, next)
-  );
-
-  router.post(
-    "/:conversationId/messages",
-    auth,
-    messageLimiter,
-    validate(sendMessageSchema),
-    (req, res, next) => messagingController.sendMessage(req, res, next)
-  );
 
   // Notifications
   router.get("/unread-count", auth, conversationLimiter, (req, res, next) =>

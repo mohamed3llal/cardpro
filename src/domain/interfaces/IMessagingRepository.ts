@@ -7,7 +7,7 @@ import {
 export interface IMessagingRepository {
   getConversations(
     userId: string,
-    filter: string,
+    filter: any,
     page: number,
     limit: number
   ): Promise<{ conversations: Conversation[]; total: number }>;

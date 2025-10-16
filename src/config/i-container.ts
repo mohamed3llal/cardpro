@@ -1,4 +1,3 @@
-import { *aspromClient } from 'prom-client';
 import dotenv from "dotenv";
 dotenv.config();
 import { env } from "./env";
@@ -64,8 +63,12 @@ import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
 import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
 
 // messaging
+import { MessagingRepository } from "@infrastructure/database/repositories/MessagingRepository";
+import { GetConversationsUseCase } from "@application/use-cases/messaging/GetConversations";
+import { StartConversationUseCase } from "@application/use-cases/messaging/StartConversation";
+import { SendMessageUseCase } from "@application/use-cases/messaging/SendMessage";
+import { GetMessagesUseCase } from "@application/use-cases/messaging/GetMessages";
 import { MessagingController } from "@presentation/controllers/MessagingController";
-
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -144,6 +147,16 @@ export class DIContainer {
   public readonly updateLastLoginUseCase: UpdateLastLogin;
 
   // Messaging
+  // Messaging Repository
+  public readonly messagingRepository: MessagingRepository;
+
+  // Messaging Use Cases
+  public readonly getConversationsUseCase: GetConversationsUseCase;
+  public readonly startConversationUseCase: StartConversationUseCase;
+  public readonly sendMessageUseCase: SendMessageUseCase;
+  public readonly getMessagesUseCase: GetMessagesUseCase;
+
+  // Messaging Controller
   public readonly messagingController: MessagingController;
 
   private constructor() {
@@ -307,10 +320,29 @@ export class DIContainer {
       this.rejectUserVerificationUseCase
     );
 
-    // Messages
-    this.messageController = new MessageController(
+    // Initialize Messaging Repository
+    this.messagingRepository = new MessagingRepository();
+
+    // Initialize Messaging Use Cases
+    this.getConversationsUseCase = new GetConversationsUseCase(
+      this.messagingRepository
     );
 
+    this.startConversationUseCase = new StartConversationUseCase(
+      this.messagingRepository
+    );
+
+    this.sendMessageUseCase = new SendMessageUseCase(this.messagingRepository);
+    this.getMessagesUseCase = new GetMessagesUseCase(this.messagingRepository);
+
+    // Initialize Messaging Controller
+    this.messagingController = new MessagingController(
+      this.getConversationsUseCase,
+      this.startConversationUseCase,
+      this.sendMessageUseCase,
+      this.getMessagesUseCase,
+      this.messagingRepository
+    );
   }
 
   static getInstance(): DIContainer {

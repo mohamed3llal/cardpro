@@ -3,8 +3,19 @@ import { ConversationModel } from "@infrastructure/database/models/ConversationM
 import { MessageModel } from "@infrastructure/database/models/MessageModel";
 import { NotificationSettingsModel } from "@infrastructure/database/models/NotificationSettingsModel";
 
+import {
+  Conversation,
+  Message,
+  NotificationSettings,
+} from "@domain/entities/Messaging";
+
 export class MessagingRepository implements IMessagingRepository {
-  async getConversations(userId, filter, page, limit) {
+  async getConversations(
+    userId: string,
+    filter: any,
+    page: number,
+    limit: number
+  ): Promise<{ conversations: any[]; total: number }> {
     const skip = (page - 1) * limit;
     const query: any = { user_id: userId };
 
@@ -16,22 +27,28 @@ export class MessagingRepository implements IMessagingRepository {
       ConversationModel.find(query)
         .sort({ updated_at: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       ConversationModel.countDocuments(query),
     ]);
 
     return { conversations, total };
   }
 
-  async getConversationById(id) {
-    return ConversationModel.findById(id);
+  async getConversationById(id: string): Promise<any | null> {
+    return ConversationModel.findById(id).lean();
   }
 
-  async startConversation(userId, businessId, initialMessage) {
-    let conversation = await ConversationModel.findOne({
+  async startConversation(
+    userId: string,
+    businessId: string,
+    initialMessage: string
+  ): Promise<{ conversation: any; message: any }> {
+    let conversation: any = await ConversationModel.findOne({
       user_id: userId,
       business_id: businessId,
     });
+
     if (!conversation) {
       conversation = await ConversationModel.create({
         user_id: userId,
@@ -53,34 +70,61 @@ export class MessagingRepository implements IMessagingRepository {
     conversation.last_message_id = message._id;
     await conversation.save();
 
-    return { conversation, message };
+    return {
+      conversation: conversation.toObject(),
+      message: message.toObject(),
+    };
   }
 
-  async archiveConversation(id, userId, isArchived) {
+  async archiveConversation(
+    id: string,
+    userId: string,
+    isArchived: boolean
+  ): Promise<any> {
     const conversation = await ConversationModel.findById(id);
-    if (!conversation || conversation.user_id !== userId)
+    if (!conversation) throw new Error("Conversation not found");
+
+    if (conversation.user_id.toString() !== userId)
       throw new Error("FORBIDDEN");
+
     conversation.is_archived = isArchived;
     await conversation.save();
-    return conversation;
+
+    return conversation.toObject();
   }
 
-  async getMessages(conversationId, userId, page, limit) {
+  async getMessages(
+    conversationId: string,
+    userId: string,
+    page: number,
+    limit: number
+  ): Promise<{ messages: any[]; total: number }> {
     const skip = (page - 1) * limit;
     const [messages, total] = await Promise.all([
       MessageModel.find({ conversation_id: conversationId, is_deleted: false })
         .sort({ created_at: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       MessageModel.countDocuments({
         conversation_id: conversationId,
         is_deleted: false,
       }),
     ]);
-    return { messages, total };
+
+    return {
+      messages: messages.reverse(), // keep chronological order
+      total,
+    };
   }
 
-  async sendMessage(conversationId, senderId, content, type, attachments) {
+  async sendMessage(
+    conversationId: string,
+    senderId: string,
+    content: string,
+    type: string,
+    attachments: any[]
+  ): Promise<any> {
     const message = await MessageModel.create({
       conversation_id: conversationId,
       sender_id: senderId,
@@ -89,33 +133,47 @@ export class MessagingRepository implements IMessagingRepository {
       attachments,
       is_read: false,
     });
+
     await ConversationModel.findByIdAndUpdate(conversationId, {
       last_message_id: message._id,
+      updated_at: new Date(),
     });
-    return message;
+
+    return message.toObject();
   }
 
-  async getUnreadCount(userId) {
+  async getUnreadCount(
+    userId: string
+  ): Promise<{ unread_count: number; conversations_with_unread: number }> {
     const unreadConversations = await ConversationModel.find({
       user_id: userId,
       unread_count: { $gt: 0 },
-    });
+    }).lean();
+
     const totalUnread = unreadConversations.reduce(
-      (sum, c) => sum + c.unread_count,
+      (sum, c) => sum + (c.unread_count || 0),
       0
     );
+
     return {
       unread_count: totalUnread,
       conversations_with_unread: unreadConversations.length,
     };
   }
 
-  async updateNotificationSettings(userId, data) {
+  async updateNotificationSettings(
+    userId: string,
+    data: Partial<NotificationSettings>
+  ): Promise<NotificationSettings> {
     let settings = await NotificationSettingsModel.findOne({ user_id: userId });
-    if (!settings)
+
+    if (!settings) {
       settings = new NotificationSettingsModel({ user_id: userId });
+    }
+
     Object.assign(settings, data);
     await settings.save();
-    return settings;
+
+    return settings.toObject();
   }
 }
