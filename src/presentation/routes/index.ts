@@ -17,8 +17,6 @@ import { createBusinessRoutes } from "./businessRoutes";
 import { BusinessController } from "@presentation/controllers/BusinessController";
 import { VerificationController } from "../controllers/VerificationController";
 import { createAdminVerificationRoutes } from "./verificationRoutes";
-import { createMessagingRoutes } from "./messagingRoutes";
-import { MessagingController } from "@presentation/controllers/MessagingController";
 
 export const createRoutes = (
   cardController: CardController,
@@ -29,8 +27,7 @@ export const createRoutes = (
   domainController: DomainController,
   adminController: AdminController,
   businessController: BusinessController,
-  verificationController: VerificationController,
-  MessagingController: MessagingController
+  verificationController: VerificationController
 ): Router => {
   const router = Router();
 
@@ -73,12 +70,6 @@ export const createRoutes = (
   router.use(
     "/verifications",
     createAdminVerificationRoutes(verificationController, authService)
-  );
-
-  // Admin routes
-  router.use(
-    "/conversations",
-    createMessagingRoutes(MessagingController, authService)
   );
 
   return router;
