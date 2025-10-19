@@ -19,6 +19,8 @@ import { VerificationController } from "../controllers/VerificationController";
 import { createAdminVerificationRoutes } from "./verificationRoutes";
 import { MessagingController } from "@presentation/controllers/MessagingController";
 import { createMessagingRoutes } from "./messagingRoutes";
+import { createFavoriteRoutes } from "./favoriteRoutes";
+import { FavoriteController } from "@presentation/controllers/FavoriteController";
 
 export const createRoutes = (
   cardController: CardController,
@@ -30,7 +32,8 @@ export const createRoutes = (
   adminController: AdminController,
   businessController: BusinessController,
   verificationController: VerificationController,
-  messagingController: MessagingController
+  messagingController: MessagingController,
+  favoriteController: FavoriteController
 ): Router => {
   const router = Router();
 
@@ -77,6 +80,11 @@ export const createRoutes = (
 
   // Messaging routes
   router.use("/", createMessagingRoutes(messagingController, authService));
+
+  router.use(
+    "/favorites",
+    createFavoriteRoutes(favoriteController, authService)
+  );
 
   return router;
 };

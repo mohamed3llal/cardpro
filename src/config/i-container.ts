@@ -66,6 +66,15 @@ import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
 import { MessagingRepository } from "@infrastructure/database/repositories/MessagingRepository";
 import { MessagingController } from "@presentation/controllers/MessagingController";
 
+//favorites
+import { FavoriteRepository } from "@infrastructure/database/repositories/FavoriteRepository";
+import { AddToFavoritesUseCase } from "@application/use-cases/favorite/AddToFavorites";
+import { RemoveFromFavoritesUseCase } from "@application/use-cases/favorite/RemoveFromFavorites";
+import { GetUserFavoritesUseCase } from "@application/use-cases/favorite/GetUserFavorites";
+import { GetFavoriteBusinessesUseCase } from "@application/use-cases/favorite/GetFavoriteBusinesses";
+import { CheckIsFavoritedUseCase } from "@application/use-cases/favorite/CheckIsFavorited";
+import { FavoriteController } from "@presentation/controllers/FavoriteController";
+
 export class DIContainer {
   private static instance: DIContainer;
 
@@ -146,6 +155,19 @@ export class DIContainer {
   // Messaging
   public readonly messagingRepository: MessagingRepository;
   public readonly messagingController: MessagingController;
+
+  // Favorite Repository
+  public readonly favoriteRepository: FavoriteRepository;
+
+  // Favorite Use Cases
+  public readonly addToFavoritesUseCase: AddToFavoritesUseCase;
+  public readonly removeFromFavoritesUseCase: RemoveFromFavoritesUseCase;
+  public readonly getUserFavoritesUseCase: GetUserFavoritesUseCase;
+  public readonly getFavoriteBusinessesUseCase: GetFavoriteBusinessesUseCase;
+  public readonly checkIsFavoritedUseCase: CheckIsFavoritedUseCase;
+
+  // Favorite Controller
+  public readonly favoriteController: FavoriteController;
 
   private constructor() {
     // Initialize Repositories
@@ -315,6 +337,40 @@ export class DIContainer {
 
     this.messagingController = new MessagingController(
       this.messagingRepository
+    );
+
+    // Initialize Favorite Repository
+    this.favoriteRepository = new FavoriteRepository();
+
+    // Initialize Favorite Use Cases
+    this.addToFavoritesUseCase = new AddToFavoritesUseCase(
+      this.favoriteRepository,
+      this.cardRepository
+    );
+
+    this.removeFromFavoritesUseCase = new RemoveFromFavoritesUseCase(
+      this.favoriteRepository
+    );
+
+    this.getUserFavoritesUseCase = new GetUserFavoritesUseCase(
+      this.favoriteRepository
+    );
+
+    this.getFavoriteBusinessesUseCase = new GetFavoriteBusinessesUseCase(
+      this.favoriteRepository
+    );
+
+    this.checkIsFavoritedUseCase = new CheckIsFavoritedUseCase(
+      this.favoriteRepository
+    );
+
+    // Initialize Favorite Controller
+    this.favoriteController = new FavoriteController(
+      this.addToFavoritesUseCase,
+      this.removeFromFavoritesUseCase,
+      this.getUserFavoritesUseCase,
+      this.getFavoriteBusinessesUseCase,
+      this.checkIsFavoritedUseCase
     );
   }
 
