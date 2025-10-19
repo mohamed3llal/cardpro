@@ -22,20 +22,17 @@ export const createFavoriteRoutes = (
   const router = Router();
   const auth = authMiddleware(authService);
 
-  // All routes require authentication
-  router.use(auth);
-
   /**
    * GET /api/v1/favorites
    * Get all favorite business IDs
    */
-  router.get("/", favoriteController.getUserFavorites);
+  router.get("/", auth, favoriteController.getUserFavorites);
 
   /**
    * POST /api/v1/favorites
    * Add a business to favorites
    */
-  router.post("/", favoritesRateLimit, favoriteController.addToFavorites);
+  router.post("/", auth, favoritesRateLimit, favoriteController.addToFavorites);
 
   /**
    * DELETE /api/v1/favorites/:business_id
@@ -43,6 +40,7 @@ export const createFavoriteRoutes = (
    */
   router.delete(
     "/:business_id",
+    auth,
     favoritesRateLimit,
     favoriteController.removeFromFavorites
   );
@@ -51,13 +49,13 @@ export const createFavoriteRoutes = (
    * GET /api/v1/favorites/check/:business_id
    * Check if a business is favorited
    */
-  router.get("/check/:business_id", favoriteController.checkIsFavorited);
+  router.get("/check/:business_id", auth, favoriteController.checkIsFavorited);
 
   /**
    * GET /api/v1/favorites/businesses
    * Get full details of all favorited businesses (paginated)
    */
-  router.get("/businesses", favoriteController.getFavoriteBusinesses);
+  router.get("/businesses", auth, favoriteController.getFavoriteBusinesses);
 
   return router;
 };

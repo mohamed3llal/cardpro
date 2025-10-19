@@ -75,8 +75,32 @@ import { GetFavoriteBusinessesUseCase } from "@application/use-cases/favorite/Ge
 import { CheckIsFavoritedUseCase } from "@application/use-cases/favorite/CheckIsFavorited";
 import { FavoriteController } from "@presentation/controllers/FavoriteController";
 
+// reviews
+import { ReviewRepository } from "@infrastructure/database/repositories/ReviewRepository";
+import { CreateReviewUseCase } from "@application/use-cases/review/CreateReview";
+import { GetBusinessReviewsUseCase } from "@application/use-cases/review/GetBusinessReviews";
+import { GetUserReviewsUseCase } from "@application/use-cases/review/GetUserReviews";
+import { UpdateReviewUseCase } from "@application/use-cases/review/UpdateReview";
+import { DeleteReviewUseCase } from "@application/use-cases/review/DeleteReview";
+import { MarkReviewHelpfulUseCase } from "@application/use-cases/review/MarkReviewHelpful";
+import { ReviewController } from "@presentation/controllers/ReviewController";
+
 export class DIContainer {
   private static instance: DIContainer;
+
+  // Review Repository
+  public readonly reviewRepository: ReviewRepository;
+
+  // Review Use Cases
+  public readonly createReviewUseCase: CreateReviewUseCase;
+  public readonly getBusinessReviewsUseCase: GetBusinessReviewsUseCase;
+  public readonly getUserReviewsUseCase: GetUserReviewsUseCase;
+  public readonly updateReviewUseCase: UpdateReviewUseCase;
+  public readonly deleteReviewUseCase: DeleteReviewUseCase;
+  public readonly markReviewHelpfulUseCase: MarkReviewHelpfulUseCase;
+
+  // Review Controller
+  public readonly reviewController: ReviewController;
 
   // Repositories
   public readonly analyticsRepository: AnalyticsRepository;
@@ -371,6 +395,42 @@ export class DIContainer {
       this.getUserFavoritesUseCase,
       this.getFavoriteBusinessesUseCase,
       this.checkIsFavoritedUseCase
+    );
+
+    // Initialize Review Repository
+    this.reviewRepository = new ReviewRepository();
+
+    // Initialize Review Use Cases
+    this.createReviewUseCase = new CreateReviewUseCase(
+      this.reviewRepository,
+      this.cardRepository
+    );
+
+    this.getBusinessReviewsUseCase = new GetBusinessReviewsUseCase(
+      this.reviewRepository
+    );
+
+    this.getUserReviewsUseCase = new GetUserReviewsUseCase(
+      this.reviewRepository
+    );
+
+    this.updateReviewUseCase = new UpdateReviewUseCase(this.reviewRepository);
+
+    this.deleteReviewUseCase = new DeleteReviewUseCase(this.reviewRepository);
+
+    this.markReviewHelpfulUseCase = new MarkReviewHelpfulUseCase(
+      this.reviewRepository
+    );
+
+    // Initialize Review Controller
+    this.reviewController = new ReviewController(
+      this.createReviewUseCase,
+      this.getBusinessReviewsUseCase,
+      this.getUserReviewsUseCase,
+      this.updateReviewUseCase,
+      this.deleteReviewUseCase,
+      this.markReviewHelpfulUseCase,
+      this.userRepository
     );
   }
 
