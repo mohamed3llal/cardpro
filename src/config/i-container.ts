@@ -62,14 +62,9 @@ import { ToggleUserStatus } from "@application/use-cases/user/ToggleUserStatus";
 import { ChangeUserRole } from "@application/use-cases/user/ChangeUserRole";
 import { UpdateLastLogin } from "@application/use-cases/user/UpdateLastLogin";
 
-// messaging
-import { MessagingRepository } from "../infrastructure/database/repositories/MessagingRepository";
-
-// Use cases
-
-// Controllers
-import { MessagingController } from "../presentation/controllers/MessagingController";
-import { PaginatedUsersDTO } from "../application/dtos/UserDTO";
+// Add to imports section:
+import { MessagingRepository } from "@infrastructure/database/repositories/MessagingRepository";
+import { MessagingController } from "@presentation/controllers/MessagingController";
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -148,9 +143,10 @@ export class DIContainer {
   private cardRepository: CardRepository;
   private userRepository: UserRepository;
 
-  // Use cases
+  // Messaging
+  public readonly messagingRepository: MessagingRepository;
+  public readonly messagingController: MessagingController;
 
-  // Controllers
   private constructor() {
     // Initialize Repositories
     this.cardRepository = new CardRepository();
@@ -310,6 +306,15 @@ export class DIContainer {
       this.getAllVerificationsUseCase,
       this.approveUserVerificationUseCase,
       this.rejectUserVerificationUseCase
+    );
+
+    this.messagingRepository = new MessagingRepository(
+      this.userRepository,
+      this.cardRepository
+    );
+
+    this.messagingController = new MessagingController(
+      this.messagingRepository
     );
   }
 

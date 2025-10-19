@@ -7,8 +7,21 @@ import {
   IPaginationOptions,
   IPaginationResult,
 } from "../../../domain/interfaces/IMessagingRepository";
+import { IUserRepository } from "../../../domain/interfaces/IUserRepository";
+import { ICardRepository } from "@domain/interfaces/ICardRepository";
 
 export class MessagingRepository implements IMessagingRepository {
+  private userRepository: IUserRepository;
+  private cardRepository: ICardRepository;
+
+  constructor(
+    userRepository: IUserRepository,
+    cardRepository: ICardRepository
+  ) {
+    this.userRepository = userRepository;
+    this.cardRepository = cardRepository;
+  }
+
   async createConversation(
     userId: string,
     businessId: string,
@@ -24,14 +37,23 @@ export class MessagingRepository implements IMessagingRepository {
       return this.mapToConversationEntity(existingConv);
     }
 
-    // Get user and business details (you might want to inject these services)
+    const userData = await this.userRepository.findById(userId);
+    const cardData: any = await this.cardRepository.findById(businessId);
+    const businessOwnerId = cardData?.props?.user_id;
+    const businessData = await this.userRepository.findById(businessOwnerId);
+
+    // Get user and card details (you might want to inject these services)
     const conversation = await ConversationModel.create({
-      business_id: businessId,
-      business_name: "Business Name", // Fetch from CardRepository
-      business_avatar: null,
+      business_id: cardData?.props?._id,
+      business_owner_id: businessOwnerId,
+      business_name:
+        cardData?.props?.titel ||
+        businessData?.firstName + " " + businessData?.lastName ||
+        "Unknown Business",
+      business_avatar: businessData?.avatar || null,
       user_id: userId,
-      user_name: "User Name", // Fetch from UserRepository
-      user_avatar: null,
+      user_name: userData?.firstName + " " + userData?.lastName, // Fetch from UserRepository
+      user_avatar: userData?.avatar,
       last_message: initialMessage || null,
       last_message_at: initialMessage ? new Date() : null,
       unread_count: 0,
@@ -56,11 +78,15 @@ export class MessagingRepository implements IMessagingRepository {
     const skip = (page - 1) * limit;
 
     const [conversations, total] = await Promise.all([
-      ConversationModel.find({ user_id: userId })
+      ConversationModel.find({
+        $or: [{ user_id: userId }, { business_owner_id: userId }],
+      })
         .sort({ last_message_at: -1 })
         .skip(skip)
         .limit(limit),
-      ConversationModel.countDocuments({ user_id: userId }),
+      ConversationModel.countDocuments({
+        $or: [{ user_id: userId }, { business_owner_id: userId }],
+      }),
     ]);
 
     return this.buildPaginationResult(conversations, total, page, limit);
@@ -159,14 +185,14 @@ export class MessagingRepository implements IMessagingRepository {
 
     const [messages, total] = await Promise.all([
       MessageModel.find({ conversation_id: conversationId })
-        .sort({ created_at: -1 })
+        .sort({ created_at: 1 })
         .skip(skip)
         .limit(limit),
       MessageModel.countDocuments({ conversation_id: conversationId }),
     ]);
 
     return this.buildPaginationResult(
-      messages.map((m) => this.mapToMessageEntity(m)),
+      messages.map((m: any) => this.mapToMessageEntity(m)),
       total,
       page,
       limit
@@ -202,6 +228,7 @@ export class MessagingRepository implements IMessagingRepository {
       doc._id.toString(),
       doc.business_id,
       doc.business_name,
+      doc.business_owner_id,
       doc.user_id,
       doc.user_name,
       doc.last_message,
