@@ -85,8 +85,33 @@ import { DeleteReviewUseCase } from "@application/use-cases/review/DeleteReview"
 import { MarkReviewHelpfulUseCase } from "@application/use-cases/review/MarkReviewHelpful";
 import { ReviewController } from "@presentation/controllers/ReviewController";
 
+// reports
+import { ReportRepository } from "@infrastructure/database/repositories/ReportRepository";
+import { SubmitReportUseCase } from "@application/use-cases/report/SubmitReport";
+import { GetUserReportsUseCase } from "@application/use-cases/report/GetUserReports";
+import { GetReportByIdUseCase } from "@application/use-cases/report/GetReportById";
+import { UpdateReportStatusUseCase } from "@application/use-cases/report/UpdateReportStatus";
+import { DeleteReportUseCase } from "@application/use-cases/report/DeleteReport";
+import { ReportController } from "@presentation/controllers/ReportController";
+import { GetAllReportsUseCase } from "@application/use-cases/report/GetAllReports";
+import { th } from "zod/v4/locales";
+
 export class DIContainer {
   private static instance: DIContainer;
+
+  // reports repository
+  public readonly reportRepository: ReportRepository;
+
+  // reports use cases
+  public readonly submitReportUseCase: SubmitReportUseCase;
+  public readonly getUserReportsUseCase: GetUserReportsUseCase;
+  public readonly getReportByIdUseCase: GetReportByIdUseCase;
+  public readonly updateReportStatusUseCase: UpdateReportStatusUseCase;
+  public readonly deleteReportUseCase: DeleteReportUseCase;
+  public readonly getAllReportsUseCase: GetAllReportsUseCase;
+
+  // reports controller
+  public readonly reportController: ReportController;
 
   // Review Repository
   public readonly reviewRepository: ReviewRepository;
@@ -431,6 +456,38 @@ export class DIContainer {
       this.deleteReviewUseCase,
       this.markReviewHelpfulUseCase,
       this.userRepository
+    );
+
+    // Initialize reports Repository
+    this.reportRepository = new ReportRepository();
+
+    // Initialize reports Use Cases
+    this.submitReportUseCase = new SubmitReportUseCase(
+      this.reportRepository,
+      this.cardRepository
+    );
+
+    this.getUserReportsUseCase = new GetUserReportsUseCase(
+      this.reportRepository
+    );
+
+    this.getReportByIdUseCase = new GetReportByIdUseCase(this.reportRepository);
+
+    this.updateReportStatusUseCase = new UpdateReportStatusUseCase(
+      this.reportRepository
+    );
+
+    this.deleteReportUseCase = new DeleteReportUseCase(this.reportRepository);
+
+    this.getAllReportsUseCase = new GetAllReportsUseCase(this.reportRepository);
+
+    this.reportController = new ReportController(
+      this.submitReportUseCase,
+      this.getUserReportsUseCase,
+      this.getReportByIdUseCase,
+      this.deleteReportUseCase,
+      this.getAllReportsUseCase,
+      this.updateReportStatusUseCase
     );
   }
 

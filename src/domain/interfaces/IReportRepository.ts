@@ -1,3 +1,25 @@
+import { Report } from "@domain/entities/Report";
+
+export interface IReportRepository {
+  create(report: Report): Promise<Report>;
+  findById(id: string): Promise<Report | null>;
+  findByCardAndUser(cardId: string, userId: string): Promise<Report | null>;
+  findByUserId(userId: string): Promise<Report[]>;
+  findAll(
+    page: number,
+    limit: number,
+    filters?: {
+      status?: string;
+      report_type?: string;
+    }
+  ): Promise<{ reports: Report[]; total: number }>;
+  update(id: string, report: Report): Promise<Report | null>;
+  delete(id: string): Promise<boolean>;
+  exists(id: string): Promise<boolean>;
+  count(filters?: any): Promise<number>;
+}
+
+// src/infrastructure/database/models/ReportModel.ts
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IReportDocument extends Document {

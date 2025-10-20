@@ -23,6 +23,8 @@ import { createFavoriteRoutes } from "./favoriteRoutes";
 import { FavoriteController } from "@presentation/controllers/FavoriteController";
 import { ReviewController } from "@presentation/controllers/ReviewController";
 import { createReviewRoutes } from "./reviewRoutes";
+import { ReportController } from "@presentation/controllers/ReportController";
+import { createReportRoutes } from "./reportRoutes";
 
 export const createRoutes = (
   cardController: CardController,
@@ -36,7 +38,8 @@ export const createRoutes = (
   verificationController: VerificationController,
   messagingController: MessagingController,
   favoriteController: FavoriteController,
-  reviewController: ReviewController
+  reviewController: ReviewController,
+  reportController: ReportController
 ): Router => {
   const router = Router();
 
@@ -90,5 +93,7 @@ export const createRoutes = (
   );
 
   router.use("/", createReviewRoutes(reviewController, authService));
+
+  router.use("/", createReportRoutes(reportController, authService));
   return router;
 };

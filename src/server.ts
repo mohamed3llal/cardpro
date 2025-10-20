@@ -90,7 +90,8 @@ class Server {
       this.diContainer.verificationController,
       this.diContainer.messagingController,
       this.diContainer.favoriteController,
-      this.diContainer.reviewController
+      this.diContainer.reviewController,
+      this.diContainer.reportController
     );
 
     this.app.use("/api/v1", routes);
