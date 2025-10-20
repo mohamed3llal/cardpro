@@ -137,6 +137,10 @@ export class ReportController {
     next: NextFunction
   ): Promise<void> => {
     try {
+      console.log("================================");
+      console.log("req.query", req.query);
+      console.log("================================");
+
       const page = parseInt(req.query.page as string) || 1;
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const status = req.query.status as string;
@@ -146,6 +150,9 @@ export class ReportController {
         status,
         report_type: reportType,
       });
+      console.log("================================");
+      console.log("result", result);
+      console.log("================================");
 
       res.status(200).json(result);
     } catch (error) {

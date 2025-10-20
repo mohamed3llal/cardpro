@@ -95,5 +95,6 @@ export const createRoutes = (
   router.use("/", createReviewRoutes(reviewController, authService));
 
   router.use("/", createReportRoutes(reportController, authService));
+
   return router;
 };

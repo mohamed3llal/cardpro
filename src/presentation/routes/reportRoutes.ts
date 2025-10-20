@@ -19,18 +19,21 @@ export const createReportRoutes = (
 ): Router => {
   const router = Router();
   const auth = authMiddleware(authService);
+  // All admin routes require authentication and admin privileges
+  router.use(auth);
+  router.use(adminMiddleware);
 
-  router.post("/", auth, reportRateLimit, reportController.submitReport);
-  router.get("/user", auth, reportController.getUserReports);
-  router.get("/:reportId", auth, reportController.getReportById);
-  router.delete("/:reportId", auth, reportController.deleteReport);
+  //
+  router.post("/reports", reportRateLimit, reportController.submitReport);
+  router.get("/reports/user", reportController.getUserReports);
+  router.get("reports/:reportId", reportController.getReportById);
+  router.delete("/:reportId", reportController.deleteReport);
 
   // Admin routes
-  router.get("/", auth, adminMiddleware, reportController.getAllReports);
+  router.get("/admin/reports", reportController.getAllReports);
+
   router.patch(
-    "/:reportId/status",
-    auth,
-    adminMiddleware,
+    "/admin/reports/:reportId/status",
     reportController.updateReportStatus
   );
 
