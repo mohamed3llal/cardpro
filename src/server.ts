@@ -59,6 +59,7 @@ class Server {
       standardHeaders: true,
       legacyHeaders: false,
     });
+
     this.app.use("/api/", limiter);
 
     this.app.use(express.json({ limit: "10mb" }));
