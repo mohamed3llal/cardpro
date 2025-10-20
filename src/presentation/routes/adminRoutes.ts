@@ -6,11 +6,13 @@ import { adminMiddleware } from "@infrastructure/middleware/adminMiddleware";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
 import { DomainController } from "@presentation/controllers/DomainController";
 import { VerificationController } from "@presentation/controllers/VerificationController";
+import { ReportController } from "@presentation/controllers/ReportController";
 
 export const createAdminRoutes = (
   adminController: AdminController,
   domainController: DomainController,
   verificationController: VerificationController,
+  reportController: ReportController,
   authService: IAuthService
 ): Router => {
   const router = Router();
@@ -74,9 +76,11 @@ export const createAdminRoutes = (
   // ============================================
   // Reports Management
   // ============================================
-  router.get("/reports", adminController.getAllReports);
-  router.put("/reports/:reportId/status", adminController.updateReportStatus);
-
+  router.get("/reports", reportController.getAllReports);
+  router.patch(
+    "/reports/:reportId/status",
+    reportController.updateReportStatus
+  );
   // ============================================
   // Reviews Management
   // ============================================

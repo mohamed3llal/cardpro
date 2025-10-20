@@ -20,6 +20,7 @@ export class UpdateReportStatusUseCase {
     }
 
     report.updateStatus(dto.status, adminId, dto.admin_notes);
+
     const updated = await this.reportRepository.update(reportId, report);
 
     if (!updated) {

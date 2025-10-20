@@ -24,18 +24,10 @@ export const createReportRoutes = (
   router.use(adminMiddleware);
 
   //
-  router.post("/reports", reportRateLimit, reportController.submitReport);
-  router.get("/reports/user", reportController.getUserReports);
-  router.get("reports/:reportId", reportController.getReportById);
+  router.post("/", reportRateLimit, reportController.submitReport);
+  router.get("/user", reportController.getUserReports);
+  router.get("/:reportId", reportController.getReportById);
   router.delete("/:reportId", reportController.deleteReport);
-
-  // Admin routes
-  router.get("/admin/reports", reportController.getAllReports);
-
-  router.patch(
-    "/admin/reports/:reportId/status",
-    reportController.updateReportStatus
-  );
 
   return router;
 };

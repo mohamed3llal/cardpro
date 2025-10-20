@@ -74,6 +74,7 @@ export const createRoutes = (
       adminController,
       domainController,
       verificationController,
+      reportController,
       authService
     )
   );
@@ -94,7 +95,7 @@ export const createRoutes = (
 
   router.use("/", createReviewRoutes(reviewController, authService));
 
-  router.use("/", createReportRoutes(reportController, authService));
+  router.use("/reports", createReportRoutes(reportController, authService));
 
   return router;
 };
