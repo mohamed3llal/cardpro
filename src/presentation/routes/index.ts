@@ -27,6 +27,7 @@ import { ReportController } from "@presentation/controllers/ReportController";
 import { createReportRoutes } from "./reportRoutes";
 import { createFeedbackRoutes } from "./feedbackRoutes";
 import { FeedbackController } from "../controllers/FeedbackController";
+import packageRoutes from "./packageRoutes";
 
 export const createRoutes = (
   cardController: CardController,
@@ -106,6 +107,8 @@ export const createRoutes = (
     "/feedback",
     createFeedbackRoutes(feedbackController, authService)
   );
+
+  router.use("/", packageRoutes);
 
   return router;
 };
