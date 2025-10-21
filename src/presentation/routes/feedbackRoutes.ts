@@ -63,32 +63,5 @@ export const createFeedbackRoutes = (
    */
   router.delete("/:feedbackId", auth, feedbackController.deleteFeedback);
 
-  // ============================================
-  // ADMIN ENDPOINTS
-  // ============================================
-
-  /**
-   * GET /api/v1/admin/feedback
-   * Get all feedback with filters (Admin only)
-   */
-  router.get(
-    "/admin/all",
-    auth,
-    adminMiddleware,
-    feedbackController.getAllFeedback
-  );
-
-  /**
-   * PATCH /api/v1/admin/feedback/:feedbackId/status
-   * Update feedback status (Admin only)
-   */
-  router.patch(
-    "/admin/:feedbackId/status",
-    auth,
-    adminMiddleware,
-    validate(updateFeedbackStatusSchema),
-    feedbackController.updateFeedbackStatus
-  );
-
   return router;
 };

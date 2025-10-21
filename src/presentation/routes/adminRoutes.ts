@@ -7,12 +7,18 @@ import { IAuthService } from "@domain/interfaces/IAuthServices";
 import { DomainController } from "@presentation/controllers/DomainController";
 import { VerificationController } from "@presentation/controllers/VerificationController";
 import { ReportController } from "@presentation/controllers/ReportController";
+import { FeedbackController } from "@presentation/controllers/FeedbackController";
+import { updateFeedbackStatusSchema } from "@presentation/validators/adminValidator";
+import { validate } from "@infrastructure/middleware/validator";
+import { ReviewController } from "@presentation/controllers/ReviewController";
 
 export const createAdminRoutes = (
   adminController: AdminController,
   domainController: DomainController,
   verificationController: VerificationController,
   reportController: ReportController,
+  feedbackController: FeedbackController,
+  reviewController: ReviewController,
   authService: IAuthService
 ): Router => {
   const router = Router();
@@ -82,18 +88,51 @@ export const createAdminRoutes = (
     reportController.updateReportStatus
   );
   // ============================================
-  // Reviews Management
+  // Admin Endpoints
   // ============================================
-  router.get("/reviews", adminController.getAllReviews);
-  router.delete("/reviews/:reviewId", adminController.deleteReview);
+
+  /**
+   * GET /api/admin/reviews
+   * Get all reviews (Admin only)
+   */
+  router.get("/reviews", auth, adminMiddleware, reviewController.getAllReviews);
+
+  /**
+   * DELETE /api/admin/reviews/:reviewId
+   * Delete any review (Admin only)
+   */
+  router.delete(
+    "/reviews/:reviewId",
+    auth,
+    adminMiddleware,
+    reviewController.deleteReview
+  );
 
   // ============================================
-  // Feedback Management
+  // ADMIN ENDPOINTS
   // ============================================
-  router.get("/feedback", adminController.getAllFeedback);
-  router.put(
+
+  /**
+   * GET /api/v1/admin/feedback
+   * Get all feedback with filters (Admin only)
+   */
+  router.get(
+    "/feedback",
+    auth,
+    adminMiddleware,
+    feedbackController.getAllFeedback
+  );
+
+  /**
+   * PATCH /api/v1/admin/feedback/:feedbackId/status
+   * Update feedback status (Admin only)
+   */
+  router.patch(
     "/feedback/:feedbackId/status",
-    adminController.updateFeedbackStatus
+    auth,
+    adminMiddleware,
+    validate(updateFeedbackStatusSchema),
+    feedbackController.updateFeedbackStatus
   );
 
   // ============================================

@@ -329,9 +329,19 @@ export class ReviewController {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
       const status = req.query.status as string;
 
-      // This would be implemented in the use case
+      const result = await this.getAllReviewsUseCase.execute(
+        page,
+        limit,
+        status
+      );
+
       res.status(200).json({
-        message: "Admin reviews endpoint",
+        reviews: result.reviews.map((review) =>
+          this.formatReviewResponse(review)
+        ),
+        total: result.total,
+        page,
+        limit,
       });
     } catch (error) {
       logger.error("Error getting all reviews:", error);

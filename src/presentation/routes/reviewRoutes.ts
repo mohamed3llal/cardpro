@@ -98,31 +98,5 @@ export const createReviewRoutes = (
     reviewController.markAsHelpful
   );
 
-  // ============================================
-  // Admin Endpoints
-  // ============================================
-
-  /**
-   * GET /api/admin/reviews
-   * Get all reviews (Admin only)
-   */
-  router.get(
-    "/admin/reviews",
-    auth,
-    adminMiddleware,
-    reviewController.getAllReviews
-  );
-
-  /**
-   * DELETE /api/admin/reviews/:reviewId
-   * Delete any review (Admin only)
-   */
-  router.delete(
-    "/admin/reviews/:reviewId",
-    auth,
-    adminMiddleware,
-    reviewController.deleteReview
-  );
-
   return router;
 };

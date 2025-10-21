@@ -78,6 +78,8 @@ export const createRoutes = (
       domainController,
       verificationController,
       reportController,
+      feedbackController,
+      reviewController,
       authService
     )
   );
