@@ -8,6 +8,7 @@ import { GetUserReviewsUseCase } from "@application/use-cases/review/GetUserRevi
 import { UpdateReviewUseCase } from "@application/use-cases/review/UpdateReview";
 import { DeleteReviewUseCase } from "@application/use-cases/review/DeleteReview";
 import { MarkReviewHelpfulUseCase } from "@application/use-cases/review/MarkReviewHelpful";
+import { GetAllReviewsUseCase } from "@application/use-cases/review/GetAllReviews";
 import { IUserRepository } from "@domain/interfaces/IUserRepository";
 import { logger } from "@config/logger";
 
@@ -19,8 +20,24 @@ export class ReviewController {
     private readonly updateReviewUseCase: UpdateReviewUseCase,
     private readonly deleteReviewUseCase: DeleteReviewUseCase,
     private readonly markReviewHelpfulUseCase: MarkReviewHelpfulUseCase,
-    private readonly userRepository: IUserRepository
+    private readonly userRepository: IUserRepository,
+    private readonly getAllReviewsUseCase: GetAllReviewsUseCase
   ) {}
+  getAllReviews = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const result = await this.getAllReviewsUseCase.execute();
+      res.status(200).json({
+        reviews: result.reviews.map((r) => this.formatReviewResponse(r)),
+      });
+    } catch (error) {
+      logger.error("Error getting all reviews:", error);
+      next(error);
+    }
+  };
 
   /**
    * GET /api/businesses/:businessId/reviews
@@ -311,28 +328,6 @@ export class ReviewController {
       }
 
       logger.error("Error marking review as helpful:", error);
-      next(error);
-    }
-  };
-
-  /**
-   * GET /api/admin/reviews
-   * Get all reviews (Admin only)
-   */
-
-  getAllReviews = async (
-    req: AuthRequest,
-    res: Response,
-    next: NextFunction
-  ): Promise<void> => {
-    try {
-      const reviews = await this.getAllReviewsUseCase.getAllReviews();
-
-      res.status(200).json({
-        reviews,
-      });
-    } catch (error) {
-      logger.error("Error fetching reviews:", error);
       next(error);
     }
   };

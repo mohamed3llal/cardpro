@@ -104,6 +104,7 @@ import { DeleteFeedbackUseCase } from "@application/use-cases/feedback/DeleteFee
 import { GetAllFeedbackUseCase } from "@application/use-cases/feedback/GetAllFeedback";
 import { UpdateFeedbackStatusUseCase } from "@application/use-cases/feedback/UpdateFeedbackStatus";
 import { FeedbackController } from "@presentation/controllers/FeedbackController";
+import { GetAllReviewsUseCase } from "@application/use-cases/review/GetAllReviews";
 
 export class DIContainer {
   private static instance: DIContainer;
@@ -146,6 +147,7 @@ export class DIContainer {
   public readonly updateReviewUseCase: UpdateReviewUseCase;
   public readonly deleteReviewUseCase: DeleteReviewUseCase;
   public readonly markReviewHelpfulUseCase: MarkReviewHelpfulUseCase;
+  public readonly getAllReviewsUseCase: GetAllReviewsUseCase;
 
   // Review Controller
   public readonly reviewController: ReviewController;
@@ -470,6 +472,8 @@ export class DIContainer {
       this.reviewRepository
     );
 
+    this.getAllReviewsUseCase = new GetAllReviewsUseCase(this.reviewRepository);
+
     // Initialize Review Controller
     this.reviewController = new ReviewController(
       this.createReviewUseCase,
@@ -478,7 +482,8 @@ export class DIContainer {
       this.updateReviewUseCase,
       this.deleteReviewUseCase,
       this.markReviewHelpfulUseCase,
-      this.userRepository
+      this.userRepository,
+      this.getAllReviewsUseCase
     );
 
     // Initialize reports Repository
