@@ -28,18 +28,6 @@ export interface IAdminServices {
   createDomain(data: any): Promise<any>;
   deleteDomain(domainKey: string): Promise<void>;
 
-  // Reports Management
-  getAllReports(): Promise<any[]>;
-  updateReportStatus(reportId: string, status: string): Promise<void>;
-
-  // Reviews Management
-  getAllReviews(): Promise<any[]>;
-  deleteReview(reviewId: string): Promise<void>;
-
-  // Feedback Management
-  getAllFeedback(): Promise<any[]>;
-  updateFeedbackStatus(feedbackId: string, status: string): Promise<void>;
-
   // Subscription Management
   getAllSubscriptions(): Promise<any[]>;
   updateSubscription(

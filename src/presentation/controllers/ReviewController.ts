@@ -319,32 +319,20 @@ export class ReviewController {
    * GET /api/admin/reviews
    * Get all reviews (Admin only)
    */
+
   getAllReviews = async (
     req: AuthRequest,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
-      const status = req.query.status as string;
-
-      const result = await this.getAllReviewsUseCase.execute(
-        page,
-        limit,
-        status
-      );
+      const reviews = await this.getAllReviewsUseCase.getAllReviews();
 
       res.status(200).json({
-        reviews: result.reviews.map((review) =>
-          this.formatReviewResponse(review)
-        ),
-        total: result.total,
-        page,
-        limit,
+        reviews,
       });
     } catch (error) {
-      logger.error("Error getting all reviews:", error);
+      logger.error("Error fetching reviews:", error);
       next(error);
     }
   };

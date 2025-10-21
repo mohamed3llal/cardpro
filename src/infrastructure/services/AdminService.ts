@@ -172,39 +172,6 @@ export class AdminService implements IAdminServices {
     if (result.deletedCount === 0) throw new Error("Domain not found");
   }
 
-  async getAllReports(): Promise<any[]> {
-    // Implement if you have reports collection
-    return [];
-  }
-
-  async updateReportStatus(reportId: string, status: string): Promise<void> {
-    // Implement if you have reports collection
-    throw new Error("Reports feature not implemented");
-  }
-
-  async getAllReviews(): Promise<any[]> {
-    // Implement if you have reviews collection
-    return [];
-  }
-
-  async deleteReview(reviewId: string): Promise<void> {
-    // Implement if you have reviews collection
-    throw new Error("Reviews feature not implemented");
-  }
-
-  async getAllFeedback(): Promise<any[]> {
-    // Implement if you have feedback collection
-    return [];
-  }
-
-  async updateFeedbackStatus(
-    feedbackId: string,
-    status: string
-  ): Promise<void> {
-    // Implement if you have feedback collection
-    throw new Error("Feedback feature not implemented");
-  }
-
   async getAllSubscriptions(): Promise<any[]> {
     // Implement if you have subscriptions collection
     return [];
