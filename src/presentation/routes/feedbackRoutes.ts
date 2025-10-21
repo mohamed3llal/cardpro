@@ -9,6 +9,8 @@ import { validate } from "@infrastructure/middleware/validator";
 import {
   submitFeedbackSchema,
   updateFeedbackStatusSchema,
+  feedbackIdParamSchema,
+  getFeedbackQuerySchema,
 } from "@presentation/validators/feedbackValidator";
 import rateLimit from "express-rate-limit";
 
@@ -23,47 +25,67 @@ const feedbackRateLimit = rateLimit({
 export const createFeedbackRoutes = (
   feedbackController: FeedbackController,
   authService: IAuthService
-) => {
+): Router => {
   const router = Router();
   const auth = authMiddleware(authService);
 
-  // All admin routes require authentication and admin privileges
-  router.use(auth);
-  router.use(adminMiddleware);
-
   // ============================================
-  // ADMIN ENDPOINTS
+  // USER ENDPOINTS (Authenticated)
   // ============================================
 
   /**
-   * GET /api/v1/admin/feedbacks/pending
-   * Get all pending feedbacks
-   */
-  router.get("/pending", feedbackController.getPendingFeedbacks);
-
-  /**
-   * GET /api/v1/admin/feedbacks
-   * Get all feedbacks with optional status filter
-   */
-  router.get("/", feedbackController.getAllFeedbacks);
-
-  /**
-   * POST /api/v1/admin/feedbacks
-   * Submit a new feedback
+   * POST /api/v1/feedback
+   * Submit feedback
    */
   router.post(
     "/",
+    auth,
     feedbackRateLimit,
     validate(submitFeedbackSchema),
     feedbackController.submitFeedback
   );
 
   /**
-   * PUT /api/v1/admin/feedbacks/:feedbackId/status
-   * Update the status of a feedback
+   * GET /api/v1/feedback/user
+   * Get user's feedback
    */
-  router.put(
-    "/:feedbackId/status",
+  router.get("/user", auth, feedbackController.getUserFeedback);
+
+  /**
+   * GET /api/v1/feedback/:feedbackId
+   * Get feedback by ID (owner or admin only)
+   */
+  router.get("/:feedbackId", auth, feedbackController.getFeedbackById);
+
+  /**
+   * DELETE /api/v1/feedback/:feedbackId
+   * Delete feedback (owner only)
+   */
+  router.delete("/:feedbackId", auth, feedbackController.deleteFeedback);
+
+  // ============================================
+  // ADMIN ENDPOINTS
+  // ============================================
+
+  /**
+   * GET /api/v1/admin/feedback
+   * Get all feedback with filters (Admin only)
+   */
+  router.get(
+    "/admin/all",
+    auth,
+    adminMiddleware,
+    feedbackController.getAllFeedback
+  );
+
+  /**
+   * PATCH /api/v1/admin/feedback/:feedbackId/status
+   * Update feedback status (Admin only)
+   */
+  router.patch(
+    "/admin/:feedbackId/status",
+    auth,
+    adminMiddleware,
     validate(updateFeedbackStatusSchema),
     feedbackController.updateFeedbackStatus
   );

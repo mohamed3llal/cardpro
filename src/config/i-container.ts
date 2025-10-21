@@ -94,10 +94,33 @@ import { UpdateReportStatusUseCase } from "@application/use-cases/report/UpdateR
 import { DeleteReportUseCase } from "@application/use-cases/report/DeleteReport";
 import { ReportController } from "@presentation/controllers/ReportController";
 import { GetAllReportsUseCase } from "@application/use-cases/report/GetAllReports";
-import { th } from "zod/v4/locales";
+
+// Import feedback components
+import { FeedbackRepository } from "@infrastructure/database/repositories/FeedbackRepository";
+import { SubmitFeedbackUseCase } from "@application/use-cases/feedback/SubmitFeedback";
+import { GetUserFeedbackUseCase } from "@application/use-cases/feedback/GetUserFeedback";
+import { GetFeedbackByIdUseCase } from "@application/use-cases/feedback/GetFeedbackById";
+import { DeleteFeedbackUseCase } from "@application/use-cases/feedback/DeleteFeedback";
+import { GetAllFeedbackUseCase } from "@application/use-cases/feedback/GetAllFeedback";
+import { UpdateFeedbackStatusUseCase } from "@application/use-cases/feedback/UpdateFeedbackStatus";
+import { FeedbackController } from "@presentation/controllers/FeedbackController";
 
 export class DIContainer {
   private static instance: DIContainer;
+
+  // Feedback Repository
+  public readonly feedbackRepository: FeedbackRepository;
+
+  // Feedback Use Cases
+  public readonly submitFeedbackUseCase: SubmitFeedbackUseCase;
+  public readonly getUserFeedbackUseCase: GetUserFeedbackUseCase;
+  public readonly getFeedbackByIdUseCase: GetFeedbackByIdUseCase;
+  public readonly deleteFeedbackUseCase: DeleteFeedbackUseCase;
+  public readonly getAllFeedbackUseCase: GetAllFeedbackUseCase;
+  public readonly updateFeedbackStatusUseCase: UpdateFeedbackStatusUseCase;
+
+  // Feedback Controller
+  public readonly feedbackController: FeedbackController;
 
   // reports repository
   public readonly reportRepository: ReportRepository;
@@ -488,6 +511,45 @@ export class DIContainer {
       this.deleteReportUseCase,
       this.getAllReportsUseCase,
       this.updateReportStatusUseCase
+    );
+
+    // Initialize Feedback Repository
+    this.feedbackRepository = new FeedbackRepository();
+
+    // Initialize Feedback Use Cases
+    this.submitFeedbackUseCase = new SubmitFeedbackUseCase(
+      this.feedbackRepository,
+      this.cardRepository
+    );
+
+    this.getUserFeedbackUseCase = new GetUserFeedbackUseCase(
+      this.feedbackRepository
+    );
+
+    this.getFeedbackByIdUseCase = new GetFeedbackByIdUseCase(
+      this.feedbackRepository
+    );
+
+    this.deleteFeedbackUseCase = new DeleteFeedbackUseCase(
+      this.feedbackRepository
+    );
+
+    this.getAllFeedbackUseCase = new GetAllFeedbackUseCase(
+      this.feedbackRepository
+    );
+
+    this.updateFeedbackStatusUseCase = new UpdateFeedbackStatusUseCase(
+      this.feedbackRepository
+    );
+
+    // Initialize Feedback Controller
+    this.feedbackController = new FeedbackController(
+      this.submitFeedbackUseCase,
+      this.getUserFeedbackUseCase,
+      this.getFeedbackByIdUseCase,
+      this.deleteFeedbackUseCase,
+      this.getAllFeedbackUseCase,
+      this.updateFeedbackStatusUseCase
     );
   }
 

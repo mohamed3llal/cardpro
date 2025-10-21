@@ -61,6 +61,15 @@ export class FeedbackController {
         });
         return;
       }
+
+      if (error.message === "Business card not found") {
+        res.status(404).json({
+          error: "NotFoundError",
+          message: "Business card not found",
+        });
+        return;
+      }
+
       logger.error("Error submitting feedback:", error);
       next(error);
     }
@@ -121,7 +130,23 @@ export class FeedbackController {
       );
 
       res.status(200).json({ feedback });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Feedback not found") {
+        res.status(404).json({
+          error: "NotFoundError",
+          message: "Feedback not found",
+        });
+        return;
+      }
+
+      if (error.message === "You can only view your own feedback") {
+        res.status(403).json({
+          error: "Forbidden",
+          message: "You can only view your own feedback",
+        });
+        return;
+      }
+
       logger.error("Error getting feedback:", error);
       next(error);
     }
@@ -151,7 +176,23 @@ export class FeedbackController {
       res.status(200).json({
         message: "Feedback deleted successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Feedback not found") {
+        res.status(404).json({
+          error: "NotFoundError",
+          message: "Feedback not found",
+        });
+        return;
+      }
+
+      if (error.message === "You can only delete your own feedback") {
+        res.status(403).json({
+          error: "Forbidden",
+          message: "You can only delete your own feedback",
+        });
+        return;
+      }
+
       logger.error("Error deleting feedback:", error);
       next(error);
     }
@@ -176,8 +217,8 @@ export class FeedbackController {
         : undefined;
 
       const result = await this.getAllFeedbackUseCase.execute(page, limit, {
-        status,
-        feedback_type: feedbackType,
+        status: status !== "all" ? status : undefined,
+        feedback_type: feedbackType !== "all" ? feedbackType : undefined,
         rating,
       });
 
@@ -220,7 +261,15 @@ export class FeedbackController {
         feedback,
         message: "Feedback status updated successfully",
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Feedback not found") {
+        res.status(404).json({
+          error: "NotFoundError",
+          message: "Feedback not found",
+        });
+        return;
+      }
+
       logger.error("Error updating feedback status:", error);
       next(error);
     }
