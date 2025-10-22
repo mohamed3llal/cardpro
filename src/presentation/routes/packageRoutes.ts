@@ -172,6 +172,13 @@ router.post(
  * @desc    Get all packages (including inactive)
  * @access  Private/Admin
  */
+router.options(
+  "/admin/packages",
+  authMiddleware,
+  adminMiddleware,
+  adminPackageController.getAll.bind(adminPackageController)
+);
+
 router.get(
   "/admin/packages",
   authMiddleware,

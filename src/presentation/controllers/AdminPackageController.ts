@@ -30,6 +30,7 @@ export class AdminPackageController {
   // GET /admin/packages
   async getAll(req: AuthRequest, res: Response): Promise<void> {
     try {
+      console.log("GET /admin/packages - Admin");
       const includeInactive = req.query.includeInactive === "true";
       const packages = await this.getAllPackages.execute(includeInactive);
       const packagesDTO = PackageDTO.fromEntities(packages);
