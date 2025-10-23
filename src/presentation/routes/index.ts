@@ -108,6 +108,11 @@ export const createRoutes = (
     createFeedbackRoutes(feedbackController, authService)
   );
 
+  router.use(
+    "/feedback",
+    createFeedbackRoutes(feedbackController, authService)
+  );
+
   router.use("/", packageRoutes);
 
   return router;

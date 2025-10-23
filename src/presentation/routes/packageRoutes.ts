@@ -88,7 +88,7 @@ const adminPackageController = new AdminPackageController(
  * @desc    Get all available packages
  * @access  Public
  */
-router.get("/packages", packageController.getPackages.bind(packageController));
+router.get("/packages", packageController.getPackages);
 
 // ============================================================================
 // USER PROTECTED ROUTES
@@ -102,7 +102,7 @@ router.get("/packages", packageController.getPackages.bind(packageController));
 router.get(
   "/subscriptions/current",
   authMiddleware,
-  packageController.getCurrentUserSubscription.bind(packageController)
+  packageController.getCurrentUserSubscription
 );
 
 /**
@@ -110,11 +110,7 @@ router.get(
  * @desc    Get package usage statistics
  * @access  Private
  */
-router.get(
-  "/subscriptions/usage",
-  authMiddleware,
-  packageController.getUsage.bind(packageController)
-);
+router.get("/subscriptions/usage", authMiddleware, packageController.getUsage);
 
 /**
  * @route   POST /api/v1/subscriptions
@@ -125,7 +121,7 @@ router.post(
   "/subscriptions",
   authMiddleware,
   validate(packageValidators.subscribe),
-  packageController.subscribe.bind(packageController)
+  packageController.subscribe
 );
 
 /**
@@ -137,7 +133,7 @@ router.post(
   "/subscriptions/cancel",
   authMiddleware,
   validate(packageValidators.cancel),
-  packageController.cancel.bind(packageController)
+  packageController.cancel
 );
 
 /**
@@ -148,7 +144,7 @@ router.post(
 router.get(
   "/boosts/active",
   authMiddleware,
-  packageController.getActiveCardBoosts.bind(packageController)
+  packageController.getActiveCardBoosts
 );
 
 /**
@@ -160,7 +156,7 @@ router.post(
   "/cards/:cardId/boost",
   authMiddleware,
   validate(packageValidators.boostCard),
-  packageController.boostCardById.bind(packageController)
+  packageController.boostCardById
 );
 
 // ============================================================================
@@ -172,18 +168,12 @@ router.post(
  * @desc    Get all packages (including inactive)
  * @access  Private/Admin
  */
-router.options(
-  "/admin/packages",
-  authMiddleware,
-  adminMiddleware,
-  adminPackageController.getAll.bind(adminPackageController)
-);
 
 router.get(
   "/admin/packages",
   authMiddleware,
   adminMiddleware,
-  adminPackageController.getAll.bind(adminPackageController)
+  adminPackageController.getAll
 );
 
 /**
@@ -196,7 +186,7 @@ router.post(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.createPackage),
-  adminPackageController.create.bind(adminPackageController)
+  adminPackageController.create
 );
 
 /**
@@ -209,7 +199,7 @@ router.put(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.updatePackage),
-  adminPackageController.update.bind(adminPackageController)
+  adminPackageController.update
 );
 
 /**
@@ -222,7 +212,7 @@ router.delete(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.deletePackage),
-  adminPackageController.delete.bind(adminPackageController)
+  adminPackageController.delete
 );
 
 /**
@@ -235,7 +225,7 @@ router.post(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.schedulePackage),
-  adminPackageController.schedule.bind(adminPackageController)
+  adminPackageController.schedule
 );
 
 /**
@@ -248,7 +238,7 @@ router.get(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.pagination),
-  adminPackageController.getAllSubs.bind(adminPackageController)
+  adminPackageController.getAllSubs
 );
 
 /**
@@ -261,7 +251,7 @@ router.get(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.dateRange),
-  adminPackageController.getRevenue.bind(adminPackageController)
+  adminPackageController.getRevenue
 );
 
 /**
@@ -273,7 +263,7 @@ router.get(
   "/admin/packages/usage-stats",
   authMiddleware,
   adminMiddleware,
-  adminPackageController.getUsageStats.bind(adminPackageController)
+  adminPackageController.getUsageStats
 );
 
 /**
@@ -287,7 +277,7 @@ router.get(
   adminMiddleware,
   validate(packageValidators.getSubscribers),
   validate(packageValidators.pagination),
-  adminPackageController.getSubscribers.bind(adminPackageController)
+  adminPackageController.getSubscribers
 );
 
 /**
@@ -300,7 +290,7 @@ router.post(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.sendReminder),
-  adminPackageController.sendReminder.bind(adminPackageController)
+  adminPackageController.sendReminder
 );
 
 /**
@@ -313,7 +303,7 @@ router.get(
   authMiddleware,
   adminMiddleware,
   validate(packageValidators.dateRange),
-  adminPackageController.exportBilling.bind(adminPackageController)
+  adminPackageController.exportBilling
 );
 
 export default router;
