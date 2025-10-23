@@ -16,21 +16,18 @@ import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
 
 export class AdminPackageController {
   constructor(
-    private createPackage: CreatePackage,
-    private updatePackage: UpdatePackage,
-    private deletePackage: DeletePackage,
-    private getAllPackages: GetAllPackagesAdmin,
-    private schedulePackage: SchedulePackage,
-    private getAllSubscriptions: GetAllSubscriptionsAdmin,
-    private getRevenueReport: GetRevenueReport,
-    private getPlanUsageStats: GetPlanUsageStats,
-    private getPackageSubscribers: GetPackageSubscribers
+    private readonly createPackageUseCase: CreatePackage,
+    private readonly updatePackageUseCase: UpdatePackage,
+    private readonly deletePackageUseCase: DeletePackage,
+    private readonly getAllPackagesUseCase: GetAllPackagesAdmin,
+    private readonly schedulePackageUseCase: SchedulePackage,
+    private readonly getAllSubscriptionsUseCase: GetAllSubscriptionsAdmin,
+    private readonly getRevenueReportUseCase: GetRevenueReport,
+    private readonly getPlanUsageStatsUseCase: GetPlanUsageStats,
+    private readonly getPackageSubscribersUseCase: GetPackageSubscribers
   ) {}
 
   // GET /admin/packages
-  // In src/presentation/controllers/AdminPackageController.ts
-  // Replace the getAll method with this:
-
   async getAll(req: AuthRequest, res: Response): Promise<void> {
     try {
       const includeInactive = req.query.includeInactive === "true";
@@ -40,7 +37,9 @@ export class AdminPackageController {
         includeInactive
       );
 
-      const packages = await this.getAllPackages.execute(includeInactive);
+      const packages = await this.getAllPackagesUseCase.execute(
+        includeInactive
+      );
 
       console.log(`✅ Controller received ${packages.length} packages`);
 
@@ -63,11 +62,12 @@ export class AdminPackageController {
       );
     }
   }
+
   // POST /admin/packages
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
       const packageData = req.body;
-      const pkg = await this.createPackage.execute(packageData);
+      const pkg = await this.createPackageUseCase.execute(packageData);
       const packageDTO = PackageDTO.fromEntity(pkg);
 
       ResponseHandler.success(res, packageDTO, 201);
@@ -82,7 +82,7 @@ export class AdminPackageController {
       const { id } = req.params;
       const updateData = req.body;
 
-      const pkg = await this.updatePackage.execute(id, updateData);
+      const pkg = await this.updatePackageUseCase.execute(id, updateData);
       const packageDTO = PackageDTO.fromEntity(pkg);
 
       ResponseHandler.success(res, packageDTO);
@@ -95,7 +95,7 @@ export class AdminPackageController {
   async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      await this.deletePackage.execute(id);
+      await this.deletePackageUseCase.execute(id);
 
       ResponseHandler.success(res, null, 204);
     } catch (error: any) {
@@ -109,7 +109,7 @@ export class AdminPackageController {
       const { id } = req.params;
       const { scheduledActivateAt, scheduledDeactivateAt } = req.body;
 
-      const pkg = await this.schedulePackage.execute({
+      const pkg = await this.schedulePackageUseCase.execute({
         packageId: id,
         scheduledActivateAt: scheduledActivateAt
           ? new Date(scheduledActivateAt)
@@ -133,7 +133,7 @@ export class AdminPackageController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const result = await this.getAllSubscriptions.execute(page, limit);
+      const result = await this.getAllSubscriptionsUseCase.execute(page, limit);
 
       ResponseHandler.success(res, result);
     } catch (error: any) {
@@ -151,7 +151,10 @@ export class AdminPackageController {
         ? new Date(req.query.endDate as string)
         : undefined;
 
-      const report = await this.getRevenueReport.execute(startDate, endDate);
+      const report = await this.getRevenueReportUseCase.execute(
+        startDate,
+        endDate
+      );
 
       ResponseHandler.success(res, report);
     } catch (error: any) {
@@ -162,7 +165,7 @@ export class AdminPackageController {
   // GET /admin/packages/usage-stats
   async getUsageStats(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const stats = await this.getPlanUsageStats.execute();
+      const stats = await this.getPlanUsageStatsUseCase.execute();
 
       ResponseHandler.success(res, stats);
     } catch (error: any) {
@@ -177,7 +180,7 @@ export class AdminPackageController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      const result = await this.getPackageSubscribers.execute(
+      const result = await this.getPackageSubscribersUseCase.execute(
         packageId,
         page,
         limit

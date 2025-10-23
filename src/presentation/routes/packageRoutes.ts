@@ -25,7 +25,10 @@ export const createPackageRoutes = (
    * @desc    Get all available packages
    * @access  Public
    */
-  router.get("/packages", packageController.getPackages);
+  router.get(
+    "/packages",
+    packageController.getPackages.bind(packageController)
+  );
 
   // ============================================================================
   // USER PROTECTED ROUTES
@@ -39,7 +42,7 @@ export const createPackageRoutes = (
   router.get(
     "/subscriptions/current",
     auth,
-    packageController.getCurrentUserSubscription
+    packageController.getCurrentUserSubscription.bind(packageController)
   );
 
   /**
@@ -47,7 +50,11 @@ export const createPackageRoutes = (
    * @desc    Get package usage statistics
    * @access  Private
    */
-  router.get("/subscriptions/usage", auth, packageController.getUsage);
+  router.get(
+    "/subscriptions/usage",
+    auth,
+    packageController.getUsage.bind(packageController)
+  );
 
   /**
    * @route   POST /api/v1/subscriptions
@@ -58,7 +65,7 @@ export const createPackageRoutes = (
     "/subscriptions",
     auth,
     validate(packageValidators.subscribe),
-    packageController.subscribe
+    packageController.subscribe.bind(packageController)
   );
 
   /**
@@ -70,7 +77,7 @@ export const createPackageRoutes = (
     "/subscriptions/cancel",
     auth,
     validate(packageValidators.cancel),
-    packageController.cancel
+    packageController.cancel.bind(packageController)
   );
 
   /**
@@ -78,7 +85,11 @@ export const createPackageRoutes = (
    * @desc    Get active boosts
    * @access  Private
    */
-  router.get("/boosts/active", auth, packageController.getActiveCardBoosts);
+  router.get(
+    "/boosts/active",
+    auth,
+    packageController.getActiveCardBoosts.bind(packageController)
+  );
 
   /**
    * @route   POST /api/v1/cards/:cardId/boost
@@ -89,7 +100,7 @@ export const createPackageRoutes = (
     "/cards/:cardId/boost",
     auth,
     validate(packageValidators.boostCard),
-    packageController.boostCardById
+    packageController.boostCardById.bind(packageController)
   );
 
   return router;
@@ -115,7 +126,10 @@ export const createAdminPackageRoutes = (
    * @desc    Get all packages (including inactive)
    * @access  Private/Admin
    */
-  router.get("/packages", adminPackageController.getAll);
+  router.get(
+    "/packages",
+    adminPackageController.getAll.bind(adminPackageController)
+  );
 
   /**
    * @route   POST /api/v1/admin/packages
@@ -125,7 +139,7 @@ export const createAdminPackageRoutes = (
   router.post(
     "/packages",
     validate(packageValidators.createPackage),
-    adminPackageController.create
+    adminPackageController.create.bind(adminPackageController)
   );
 
   /**
@@ -136,7 +150,7 @@ export const createAdminPackageRoutes = (
   router.put(
     "/packages/:id",
     validate(packageValidators.updatePackage),
-    adminPackageController.update
+    adminPackageController.update.bind(adminPackageController)
   );
 
   /**
@@ -147,7 +161,7 @@ export const createAdminPackageRoutes = (
   router.delete(
     "/packages/:id",
     validate(packageValidators.deletePackage),
-    adminPackageController.delete
+    adminPackageController.delete.bind(adminPackageController)
   );
 
   /**
@@ -158,7 +172,7 @@ export const createAdminPackageRoutes = (
   router.post(
     "/packages/:id/schedule",
     validate(packageValidators.schedulePackage),
-    adminPackageController.schedule
+    adminPackageController.schedule.bind(adminPackageController)
   );
 
   /**
@@ -169,7 +183,7 @@ export const createAdminPackageRoutes = (
   router.get(
     "/subscriptions",
     validate(packageValidators.pagination),
-    adminPackageController.getAllSubs
+    adminPackageController.getAllSubs.bind(adminPackageController)
   );
 
   /**
@@ -180,7 +194,7 @@ export const createAdminPackageRoutes = (
   router.get(
     "/packages/revenue-report",
     validate(packageValidators.dateRange),
-    adminPackageController.getRevenue
+    adminPackageController.getRevenue.bind(adminPackageController)
   );
 
   /**
@@ -188,7 +202,10 @@ export const createAdminPackageRoutes = (
    * @desc    Get plan usage statistics
    * @access  Private/Admin
    */
-  router.get("/packages/usage-stats", adminPackageController.getUsageStats);
+  router.get(
+    "/packages/usage-stats",
+    adminPackageController.getUsageStats.bind(adminPackageController)
+  );
 
   /**
    * @route   GET /api/v1/admin/packages/:packageId/subscribers
@@ -199,7 +216,7 @@ export const createAdminPackageRoutes = (
     "/packages/:packageId/subscribers",
     validate(packageValidators.getSubscribers),
     validate(packageValidators.pagination),
-    adminPackageController.getSubscribers
+    adminPackageController.getSubscribers.bind(adminPackageController)
   );
 
   /**
@@ -210,7 +227,7 @@ export const createAdminPackageRoutes = (
   router.post(
     "/subscriptions/send-reminder",
     validate(packageValidators.sendReminder),
-    adminPackageController.sendReminder
+    adminPackageController.sendReminder.bind(adminPackageController)
   );
 
   /**
@@ -221,7 +238,7 @@ export const createAdminPackageRoutes = (
   router.get(
     "/packages/export-billing",
     validate(packageValidators.dateRange),
-    adminPackageController.exportBilling
+    adminPackageController.exportBilling.bind(adminPackageController)
   );
 
   return router;
