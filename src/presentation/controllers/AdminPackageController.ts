@@ -28,21 +28,41 @@ export class AdminPackageController {
   ) {}
 
   // GET /admin/packages
+  // In src/presentation/controllers/AdminPackageController.ts
+  // Replace the getAll method with this:
+
   async getAll(req: AuthRequest, res: Response): Promise<void> {
     try {
       const includeInactive = req.query.includeInactive === "true";
-      console.log("includeInactive", includeInactive);
-      const packages = await this.getAllPackages.execute(includeInactive);
-      console.log(" packages ", packages);
-      const packagesDTO = PackageDTO.fromEntities(packages);
-      console.log(" packages DTO", packagesDTO);
 
-      ResponseHandler.success(res, packagesDTO);
+      console.log(
+        "🎮 AdminPackageController.getAll - includeInactive:",
+        includeInactive
+      );
+
+      const packages = await this.getAllPackages.execute(includeInactive);
+
+      console.log(`✅ Controller received ${packages.length} packages`);
+
+      const packagesDTO = PackageDTO.fromEntities(packages);
+
+      console.log(`✅ Transformed to ${packagesDTO.length} DTOs`);
+
+      ResponseHandler.success(res, {
+        packages: packagesDTO,
+        total: packagesDTO.length,
+      });
     } catch (error: any) {
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
+      console.error("❌ Error in AdminPackageController.getAll:", error);
+      console.error("Stack:", error.stack);
+
+      ResponseHandler.error(
+        res,
+        error.message || "Failed to retrieve packages",
+        error.statusCode || 500
+      );
     }
   }
-
   // POST /admin/packages
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {

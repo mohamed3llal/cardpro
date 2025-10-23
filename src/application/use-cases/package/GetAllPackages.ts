@@ -1,3 +1,4 @@
+// src/application/use-cases/package/GetAllPackages.ts
 import { IPackageRepository } from "@domain/interfaces/IPackageRepository";
 import { Package } from "@domain/entities/Package";
 
@@ -5,32 +6,54 @@ export class GetAllPackagesAdmin {
   constructor(private packageRepository: IPackageRepository) {}
 
   async execute(includeInactive = true): Promise<Package[]> {
-    console.log(" include Inactive after", includeInactive);
+    try {
+      console.log("📦 Fetching packages, includeInactive:", includeInactive);
 
-    const packages = await this.packageRepository.getAllPackages(
-      includeInactive
-    );
-    console.log("packages", packages);
-    // Add statistics to each package
-    const packagesWithStats = await Promise.all(
-      packages.map(async (pkg) => {
-        const subscriberCount = await this.packageRepository.getSubscriberCount(
-          pkg.id
-        );
+      // Get base packages
+      const packages = await this.packageRepository.getAllPackages(
+        includeInactive
+      );
 
-        console.log("packagesWithStats", packagesWithStats);
+      console.log(`✅ Found ${packages.length} packages`);
 
-        const revenue = await this.packageRepository.getPackageRevenue(pkg.id);
-        console.log("revenue", revenue);
+      // If no packages, return empty array
+      if (!packages || packages.length === 0) {
+        return [];
+      }
 
-        return {
-          ...pkg,
-          subscriberCount,
-          revenue,
-        };
-      })
-    );
+      // Add statistics to each package
+      const packagesWithStats = await Promise.all(
+        packages.map(async (pkg) => {
+          try {
+            const [subscriberCount, revenue] = await Promise.all([
+              this.packageRepository.getSubscriberCount(pkg.id),
+              this.packageRepository.getPackageRevenue(pkg.id),
+            ]);
 
-    return packagesWithStats;
+            return {
+              ...pkg,
+              subscriberCount,
+              revenue,
+            } as Package;
+          } catch (error) {
+            console.error(`Error fetching stats for package ${pkg.id}:`, error);
+            // Return package without stats on error
+            return {
+              ...pkg,
+              subscriberCount: 0,
+              revenue: 0,
+            } as Package;
+          }
+        })
+      );
+
+      console.log(
+        `✅ Successfully enriched ${packagesWithStats.length} packages with stats`
+      );
+      return packagesWithStats;
+    } catch (error) {
+      console.error("❌ Error in GetAllPackagesAdmin.execute:", error);
+      throw error;
+    }
   }
 }

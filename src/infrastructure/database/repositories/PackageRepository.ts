@@ -32,12 +32,155 @@ export class PackageRepository implements IPackageRepository {
   }
 
   async getAllPackages(includeInactive = false): Promise<Package[]> {
-    const query = includeInactive ? {} : { isActive: true };
-    console.log("query", query);
-    const packages = await PackageModel.find(query).sort({ price: 1 });
-    console.log("getAllPackages", packages);
+    try {
+      console.log(
+        "🔍 PackageRepository.getAllPackages - includeInactive:",
+        includeInactive
+      );
 
-    return packages.map((pkg) => pkg.toJSON() as Package);
+      const query = includeInactive ? {} : { isActive: true };
+      console.log("📋 Query:", JSON.stringify(query));
+
+      const packages = await PackageModel.find(query)
+        .sort({ price: 1 })
+        .lean()
+        .exec();
+
+      console.log(`✅ Found ${packages.length} packages in database`);
+
+      // Transform MongoDB documents to Package entities
+      return packages.map((pkg: any) => ({
+        id: pkg._id.toString(),
+        name: pkg.name,
+        tier: pkg.tier,
+        price: pkg.price,
+        currency: pkg.currency,
+        interval: pkg.interval,
+        features: pkg.features,
+        description: pkg.description,
+        isActive: pkg.isActive,
+        scheduledActivateAt: pkg.scheduledActivateAt,
+        scheduledDeactivateAt: pkg.scheduledDeactivateAt,
+        subscriberCount: pkg.subscriberCount || 0,
+        revenue: pkg.revenue || 0,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt,
+      })) as Package[];
+    } catch (error) {
+      console.error("❌ Error in PackageRepository.getAllPackages:", error);
+      throw error;
+    }
+  }
+
+  async getSubscriberCount(packageId: string): Promise<number> {
+    try {
+      const count = await UserPackageModel.countDocuments({
+        packageId,
+        status: "active",
+      });
+      return count || 0;
+    } catch (error) {
+      console.error(`Error getting subscriber count for ${packageId}:`, error);
+      return 0;
+    }
+  }
+
+  async getPackageRevenue(packageId: string): Promise<number> {
+    try {
+      const pkg = await PackageModel.findById(packageId).lean();
+      if (!pkg) return 0;
+
+      const subscriberCount = await this.getSubscriberCount(packageId);
+      return (pkg.price || 0) * subscriberCount;
+    } catch (error) {
+      console.error(`Error getting revenue for ${packageId}:`, error);
+      return 0;
+    }
+  }
+
+  async getPlanUsageStats(): Promise<any> {
+    try {
+      const stats = await UserPackageModel.aggregate([
+        { $match: { status: "active" } },
+        {
+          $lookup: {
+            from: "packages",
+            let: { packageId: { $toObjectId: "$packageId" } },
+            pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$packageId"] } } }],
+            as: "package",
+          },
+        },
+        { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: "$package.tier",
+            count: { $sum: 1 },
+            revenue: { $sum: { $ifNull: ["$package.price", 0] } },
+          },
+        },
+        {
+          $project: {
+            tier: "$_id",
+            count: 1,
+            revenue: 1,
+            _id: 0,
+          },
+        },
+      ]);
+
+      const totalSubscribers = stats.reduce((sum, stat) => sum + stat.count, 0);
+
+      return {
+        totalSubscribers,
+        byTier: stats.map((stat) => ({
+          ...stat,
+          percentage:
+            totalSubscribers > 0 ? (stat.count / totalSubscribers) * 100 : 0,
+        })),
+      };
+    } catch (error) {
+      console.error("Error in getPlanUsageStats:", error);
+      return {
+        totalSubscribers: 0,
+        byTier: [],
+      };
+    }
+  }
+
+  async getRevenueReport(startDate?: Date, endDate?: Date): Promise<any> {
+    try {
+      const matchStage: any = { status: "active" };
+      if (startDate || endDate) {
+        matchStage.createdAt = {};
+        if (startDate) matchStage.createdAt.$gte = startDate;
+        if (endDate) matchStage.createdAt.$lte = endDate;
+      }
+
+      const report = await UserPackageModel.aggregate([
+        { $match: matchStage },
+        {
+          $lookup: {
+            from: "packages",
+            let: { packageId: { $toObjectId: "$packageId" } },
+            pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$packageId"] } } }],
+            as: "package",
+          },
+        },
+        { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: { $ifNull: ["$package.price", 0] } },
+            subscriptionCount: { $sum: 1 },
+          },
+        },
+      ]);
+
+      return report[0] || { totalRevenue: 0, subscriptionCount: 0 };
+    } catch (error) {
+      console.error("Error in getRevenueReport:", error);
+      return { totalRevenue: 0, subscriptionCount: 0 };
+    }
   }
 
   async getActivePackages(): Promise<Package[]> {
@@ -269,93 +412,6 @@ export class PackageRepository implements IPackageRepository {
     await BoostCardModel.findByIdAndUpdate(id, {
       $inc: { impressions, clicks },
     });
-  }
-
-  // Analytics
-  async getSubscriberCount(packageId: string): Promise<number> {
-    return UserPackageModel.countDocuments({
-      packageId,
-      status: "active",
-    });
-  }
-
-  async getPackageRevenue(packageId: string): Promise<number> {
-    const pkg = await PackageModel.findById(packageId);
-    if (!pkg) return 0;
-
-    const subscriberCount = await this.getSubscriberCount(packageId);
-    return pkg.price * subscriberCount;
-  }
-
-  async getRevenueReport(startDate?: Date, endDate?: Date): Promise<any> {
-    const matchStage: any = { status: "active" };
-    if (startDate || endDate) {
-      matchStage.createdAt = {};
-      if (startDate) matchStage.createdAt.$gte = startDate;
-      if (endDate) matchStage.createdAt.$lte = endDate;
-    }
-
-    const report = await UserPackageModel.aggregate([
-      { $match: matchStage },
-      {
-        $lookup: {
-          from: "packages",
-          localField: "packageId",
-          foreignField: "_id",
-          as: "package",
-        },
-      },
-      { $unwind: "$package" },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$package.price" },
-          subscriptionCount: { $sum: 1 },
-        },
-      },
-    ]);
-
-    return report[0] || { totalRevenue: 0, subscriptionCount: 0 };
-  }
-
-  async getPlanUsageStats(): Promise<any> {
-    const stats = await UserPackageModel.aggregate([
-      { $match: { status: "active" } },
-      {
-        $lookup: {
-          from: "packages",
-          localField: "packageId",
-          foreignField: "_id",
-          as: "package",
-        },
-      },
-      { $unwind: "$package" },
-      {
-        $group: {
-          _id: "$package.tier",
-          count: { $sum: 1 },
-          revenue: { $sum: "$package.price" },
-        },
-      },
-      {
-        $project: {
-          tier: "$_id",
-          count: 1,
-          revenue: 1,
-          _id: 0,
-        },
-      },
-    ]);
-
-    const totalSubscribers = stats.reduce((sum, stat) => sum + stat.count, 0);
-
-    return {
-      totalSubscribers,
-      byTier: stats.map((stat) => ({
-        ...stat,
-        percentage: (stat.count / totalSubscribers) * 100,
-      })),
-    };
   }
 
   async getPackageSubscribers(
