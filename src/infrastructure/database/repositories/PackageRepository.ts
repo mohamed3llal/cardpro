@@ -33,7 +33,10 @@ export class PackageRepository implements IPackageRepository {
 
   async getAllPackages(includeInactive = false): Promise<Package[]> {
     const query = includeInactive ? {} : { isActive: true };
+    console.log("query", query);
     const packages = await PackageModel.find(query).sort({ price: 1 });
+    console.log("getAllPackages", packages);
+
     return packages.map((pkg) => pkg.toJSON() as Package);
   }
 
