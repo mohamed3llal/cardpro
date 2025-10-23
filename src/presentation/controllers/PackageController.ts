@@ -31,10 +31,6 @@ export class PackageController {
   // GET /packages - Public
   async getPackages(req: AuthRequest, res: Response): Promise<void> {
     try {
-      console.log("==============================================");
-      console.log("GET /packages - Public");
-      console.log("==============================================");
-
       const packages = await this.getAvailablePackages.execute();
       const packagesDTO = PackageDTO.fromEntities(packages);
 

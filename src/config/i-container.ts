@@ -106,8 +106,60 @@ import { UpdateFeedbackStatusUseCase } from "@application/use-cases/feedback/Upd
 import { FeedbackController } from "@presentation/controllers/FeedbackController";
 import { GetAllReviewsUseCase } from "@application/use-cases/review/GetAllReviews";
 
+// Package imports
+import { PackageRepository } from "@infrastructure/database/repositories/PackageRepository";
+import { PackageController } from "@presentation/controllers/PackageController";
+import { AdminPackageController } from "@presentation/controllers/AdminPackageController";
+
+// Package use cases
+import { GetAvailablePackages } from "@application/use-cases/package/GetAvailablePackages";
+import { SubscribeToPackage } from "@application/use-cases/package/SubscribeToPackage";
+import { GetCurrentSubscription } from "@application/use-cases/package/GetCurrentSubscription";
+import { GetPackageUsage } from "@application/use-cases/package/GetPackageUsage";
+import { CancelSubscription } from "@application/use-cases/package/CancelSubscription";
+import { BoostCardUseCase } from "@application/use-cases/package/BoostCard";
+import { GetActiveBoosts } from "@application/use-cases/package/GetActiveBoosts";
+
+// Admin package use cases
+import { CreatePackage } from "@application/use-cases/package/CreatePackage";
+import { UpdatePackage } from "@application/use-cases/package/UpdatePackage";
+import { DeletePackage } from "@application/use-cases/package/DeletePackage";
+import { GetAllPackagesAdmin } from "@application/use-cases/package/GetAllPackages";
+import { SchedulePackage } from "@application/use-cases/package/SchedulePackage";
+import { GetAllSubscriptionsAdmin } from "@application/use-cases/package/GetAllSubscriptions";
+import { GetRevenueReport } from "@application/use-cases/package/GetRevenueReport";
+import { GetPlanUsageStats } from "@application/use-cases/package/GetPlanUsageStats";
+import { GetPackageSubscribers } from "@application/use-cases/package/GetPackageSubscribers";
+
 export class DIContainer {
   private static instance: DIContainer;
+
+  // Package Repository
+  public readonly packageRepository: PackageRepository;
+
+  // Package Use Cases
+  public readonly getAvailablePackagesUseCase: GetAvailablePackages;
+  public readonly subscribeToPackageUseCase: SubscribeToPackage;
+  public readonly getCurrentSubscriptionUseCase: GetCurrentSubscription;
+  public readonly getPackageUsageUseCase: GetPackageUsage;
+  public readonly cancelSubscriptionUseCase: CancelSubscription;
+  public readonly boostCardUseCase: BoostCardUseCase;
+  public readonly getActiveBoostsUseCase: GetActiveBoosts;
+
+  // Admin Package Use Cases
+  public readonly createPackageUseCase: CreatePackage;
+  public readonly updatePackageUseCase: UpdatePackage;
+  public readonly deletePackageUseCase: DeletePackage;
+  public readonly getAllPackagesAdminUseCase: GetAllPackagesAdmin;
+  public readonly schedulePackageUseCase: SchedulePackage;
+  public readonly getAllSubscriptionsAdminUseCase: GetAllSubscriptionsAdmin;
+  public readonly getRevenueReportUseCase: GetRevenueReport;
+  public readonly getPlanUsageStatsUseCase: GetPlanUsageStats;
+  public readonly getPackageSubscribersUseCase: GetPackageSubscribers;
+
+  // Package Controllers
+  public readonly packageController: PackageController;
+  public readonly adminPackageController: AdminPackageController;
 
   // Feedback Repository
   public readonly feedbackRepository: FeedbackRepository;
@@ -555,6 +607,67 @@ export class DIContainer {
       this.deleteFeedbackUseCase,
       this.getAllFeedbackUseCase,
       this.updateFeedbackStatusUseCase
+    );
+
+    this.packageRepository = new PackageRepository();
+
+    // Initialize Package Use Cases
+    this.getAvailablePackagesUseCase = new GetAvailablePackages(
+      this.packageRepository
+    );
+    this.subscribeToPackageUseCase = new SubscribeToPackage(
+      this.packageRepository
+    );
+    this.getCurrentSubscriptionUseCase = new GetCurrentSubscription(
+      this.packageRepository
+    );
+    this.getPackageUsageUseCase = new GetPackageUsage(this.packageRepository);
+    this.cancelSubscriptionUseCase = new CancelSubscription(
+      this.packageRepository
+    );
+    this.boostCardUseCase = new BoostCardUseCase(this.packageRepository);
+    this.getActiveBoostsUseCase = new GetActiveBoosts(this.packageRepository);
+
+    // Initialize Admin Package Use Cases
+    this.createPackageUseCase = new CreatePackage(this.packageRepository);
+    this.updatePackageUseCase = new UpdatePackage(this.packageRepository);
+    this.deletePackageUseCase = new DeletePackage(this.packageRepository);
+    this.getAllPackagesAdminUseCase = new GetAllPackagesAdmin(
+      this.packageRepository
+    );
+    this.schedulePackageUseCase = new SchedulePackage(this.packageRepository);
+    this.getAllSubscriptionsAdminUseCase = new GetAllSubscriptionsAdmin(
+      this.packageRepository
+    );
+    this.getRevenueReportUseCase = new GetRevenueReport(this.packageRepository);
+    this.getPlanUsageStatsUseCase = new GetPlanUsageStats(
+      this.packageRepository
+    );
+    this.getPackageSubscribersUseCase = new GetPackageSubscribers(
+      this.packageRepository
+    );
+
+    // Initialize Package Controllers
+    this.packageController = new PackageController(
+      this.getAvailablePackagesUseCase,
+      this.subscribeToPackageUseCase,
+      this.getCurrentSubscriptionUseCase,
+      this.getPackageUsageUseCase,
+      this.cancelSubscriptionUseCase,
+      this.boostCardUseCase,
+      this.getActiveBoostsUseCase
+    );
+
+    this.adminPackageController = new AdminPackageController(
+      this.createPackageUseCase,
+      this.updatePackageUseCase,
+      this.deletePackageUseCase,
+      this.getAllPackagesAdminUseCase,
+      this.schedulePackageUseCase,
+      this.getAllSubscriptionsAdminUseCase,
+      this.getRevenueReportUseCase,
+      this.getPlanUsageStatsUseCase,
+      this.getPackageSubscribersUseCase
     );
   }
 

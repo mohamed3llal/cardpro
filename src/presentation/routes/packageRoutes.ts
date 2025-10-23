@@ -1,309 +1,228 @@
 // src/presentation/routes/packageRoutes.ts
 
 import { Router } from "express";
-import { PackageController } from "../controllers/PackageController";
-import { AdminPackageController } from "../controllers/AdminPackageController";
-import { authMiddleware } from "../../infrastructure/middleware/authMiddleware";
-import { adminMiddleware } from "../../infrastructure/middleware/adminMiddleware";
-import { validate } from "../../infrastructure/middleware/validator";
-import packageValidators from "../validators/packageValidator";
-import { PackageRepository } from "../../infrastructure/database/repositories/PackageRepository";
+import { PackageController } from "@presentation/controllers/PackageController";
+import { AdminPackageController } from "@presentation/controllers/AdminPackageController";
+import { authMiddleware } from "@infrastructure/middleware/authMiddleware";
+import { adminMiddleware } from "@infrastructure/middleware/adminMiddleware";
+import { IAuthService } from "@domain/interfaces/IAuthServices";
+import { validate } from "@infrastructure/middleware/validator";
+import packageValidators from "@presentation/validators/packageValidator";
 
-// Use cases
-import { GetAvailablePackages } from "../../application/use-cases/package/GetAvailablePackages";
-import { SubscribeToPackage } from "../../application/use-cases/package/SubscribeToPackage";
-import { GetCurrentSubscription } from "../../application/use-cases/package/GetCurrentSubscription";
-import { GetPackageUsage } from "../../application/use-cases/package/GetPackageUsage";
-import { CancelSubscription } from "../../application/use-cases/package/CancelSubscription";
-import { BoostCardUseCase } from "../../application/use-cases/package/BoostCard";
-import { GetActiveBoosts } from "../../application/use-cases/package/GetActiveBoosts";
+export const createPackageRoutes = (
+  packageController: PackageController,
+  authService: IAuthService
+): Router => {
+  const router = Router();
+  const auth = authMiddleware(authService);
 
-// Admin use cases
-import { CreatePackage } from "../../application/use-cases/package/CreatePackage";
-import { UpdatePackage } from "../../application/use-cases/package/UpdatePackage";
-import { DeletePackage } from "../../application/use-cases/package/DeletePackage";
-import { GetAllPackagesAdmin } from "../../application/use-cases/package/GetAllPackages";
-import { SchedulePackage } from "../../application/use-cases/package/SchedulePackage";
-import { GetAllSubscriptionsAdmin } from "../../application/use-cases/package/GetAllSubscriptions";
-import { GetRevenueReport } from "../../application/use-cases/package/GetRevenueReport";
-import { GetPlanUsageStats } from "../../application/use-cases/package/GetPlanUsageStats";
-import { GetPackageSubscribers } from "../../application/use-cases/package/GetPackageSubscribers";
+  // ============================================================================
+  // PUBLIC ROUTES
+  // ============================================================================
 
-const router = Router();
+  /**
+   * @route   GET /api/v1/packages
+   * @desc    Get all available packages
+   * @access  Public
+   */
+  router.get("/packages", packageController.getPackages);
 
-// Initialize repository
-const packageRepository = new PackageRepository();
+  // ============================================================================
+  // USER PROTECTED ROUTES
+  // ============================================================================
 
-// Initialize use cases
-const getAvailablePackages = new GetAvailablePackages(packageRepository);
-const subscribeToPackage = new SubscribeToPackage(packageRepository);
-const getCurrentSubscription = new GetCurrentSubscription(packageRepository);
-const getPackageUsage = new GetPackageUsage(packageRepository);
-const cancelSubscription = new CancelSubscription(packageRepository);
-const boostCard = new BoostCardUseCase(packageRepository);
-const getActiveBoosts = new GetActiveBoosts(packageRepository);
+  /**
+   * @route   GET /api/v1/subscriptions/current
+   * @desc    Get current user subscription
+   * @access  Private
+   */
+  router.get(
+    "/subscriptions/current",
+    auth,
+    packageController.getCurrentUserSubscription
+  );
 
-// Initialize admin use cases
-const createPackage = new CreatePackage(packageRepository);
-const updatePackage = new UpdatePackage(packageRepository);
-const deletePackage = new DeletePackage(packageRepository);
-const getAllPackagesAdmin = new GetAllPackagesAdmin(packageRepository);
-const schedulePackage = new SchedulePackage(packageRepository);
-const getAllSubscriptionsAdmin = new GetAllSubscriptionsAdmin(
-  packageRepository
-);
-const getRevenueReport = new GetRevenueReport(packageRepository);
-const getPlanUsageStats = new GetPlanUsageStats(packageRepository);
-const getPackageSubscribers = new GetPackageSubscribers(packageRepository);
+  /**
+   * @route   GET /api/v1/subscriptions/usage
+   * @desc    Get package usage statistics
+   * @access  Private
+   */
+  router.get("/subscriptions/usage", auth, packageController.getUsage);
 
-// Initialize controllers
-const packageController = new PackageController(
-  getAvailablePackages,
-  subscribeToPackage,
-  getCurrentSubscription,
-  getPackageUsage,
-  cancelSubscription,
-  boostCard,
-  getActiveBoosts
-);
+  /**
+   * @route   POST /api/v1/subscriptions
+   * @desc    Subscribe to a package
+   * @access  Private
+   */
+  router.post(
+    "/subscriptions",
+    auth,
+    validate(packageValidators.subscribe),
+    packageController.subscribe
+  );
 
-const adminPackageController = new AdminPackageController(
-  createPackage,
-  updatePackage,
-  deletePackage,
-  getAllPackagesAdmin,
-  schedulePackage,
-  getAllSubscriptionsAdmin,
-  getRevenueReport,
-  getPlanUsageStats,
-  getPackageSubscribers
-);
+  /**
+   * @route   POST /api/v1/subscriptions/cancel
+   * @desc    Cancel subscription
+   * @access  Private
+   */
+  router.post(
+    "/subscriptions/cancel",
+    auth,
+    validate(packageValidators.cancel),
+    packageController.cancel
+  );
 
-// ============================================================================
-// PUBLIC ROUTES
-// ============================================================================
+  /**
+   * @route   GET /api/v1/boosts/active
+   * @desc    Get active boosts
+   * @access  Private
+   */
+  router.get("/boosts/active", auth, packageController.getActiveCardBoosts);
 
-/**
- * @route   GET /api/v1/packages
- * @desc    Get all available packages
- * @access  Public
- */
-router.get("/packages", packageController.getPackages);
+  /**
+   * @route   POST /api/v1/cards/:cardId/boost
+   * @desc    Boost a card
+   * @access  Private
+   */
+  router.post(
+    "/cards/:cardId/boost",
+    auth,
+    validate(packageValidators.boostCard),
+    packageController.boostCardById
+  );
 
-// ============================================================================
-// USER PROTECTED ROUTES
-// ============================================================================
+  return router;
+};
 
-/**
- * @route   GET /api/v1/subscriptions/current
- * @desc    Get current user subscription
- * @access  Private
- */
-router.get(
-  "/subscriptions/current",
-  authMiddleware,
-  packageController.getCurrentUserSubscription
-);
+export const createAdminPackageRoutes = (
+  adminPackageController: AdminPackageController,
+  authService: IAuthService
+): Router => {
+  const router = Router();
+  const auth = authMiddleware(authService);
 
-/**
- * @route   GET /api/v1/subscriptions/usage
- * @desc    Get package usage statistics
- * @access  Private
- */
-router.get("/subscriptions/usage", authMiddleware, packageController.getUsage);
+  // All admin routes require authentication and admin privileges
+  router.use(auth);
+  router.use(adminMiddleware);
 
-/**
- * @route   POST /api/v1/subscriptions
- * @desc    Subscribe to a package
- * @access  Private
- */
-router.post(
-  "/subscriptions",
-  authMiddleware,
-  validate(packageValidators.subscribe),
-  packageController.subscribe
-);
+  // ============================================================================
+  // ADMIN ROUTES
+  // ============================================================================
 
-/**
- * @route   POST /api/v1/subscriptions/cancel
- * @desc    Cancel subscription
- * @access  Private
- */
-router.post(
-  "/subscriptions/cancel",
-  authMiddleware,
-  validate(packageValidators.cancel),
-  packageController.cancel
-);
+  /**
+   * @route   GET /api/v1/admin/packages
+   * @desc    Get all packages (including inactive)
+   * @access  Private/Admin
+   */
+  router.get("/packages", adminPackageController.getAll);
 
-/**
- * @route   GET /api/v1/boosts/active
- * @desc    Get active boosts
- * @access  Private
- */
-router.get(
-  "/boosts/active",
-  authMiddleware,
-  packageController.getActiveCardBoosts
-);
+  /**
+   * @route   POST /api/v1/admin/packages
+   * @desc    Create a new package
+   * @access  Private/Admin
+   */
+  router.post(
+    "/packages",
+    validate(packageValidators.createPackage),
+    adminPackageController.create
+  );
 
-/**
- * @route   POST /api/v1/cards/:cardId/boost
- * @desc    Boost a card
- * @access  Private
- */
-router.post(
-  "/cards/:cardId/boost",
-  authMiddleware,
-  validate(packageValidators.boostCard),
-  packageController.boostCardById
-);
+  /**
+   * @route   PUT /api/v1/admin/packages/:id
+   * @desc    Update a package
+   * @access  Private/Admin
+   */
+  router.put(
+    "/packages/:id",
+    validate(packageValidators.updatePackage),
+    adminPackageController.update
+  );
 
-// ============================================================================
-// ADMIN ROUTES
-// ============================================================================
+  /**
+   * @route   DELETE /api/v1/admin/packages/:id
+   * @desc    Delete a package
+   * @access  Private/Admin
+   */
+  router.delete(
+    "/packages/:id",
+    validate(packageValidators.deletePackage),
+    adminPackageController.delete
+  );
 
-/**
- * @route   GET /api/v1/admin/packages
- * @desc    Get all packages (including inactive)
- * @access  Private/Admin
- */
+  /**
+   * @route   POST /api/v1/admin/packages/:id/schedule
+   * @desc    Schedule package activation/deactivation
+   * @access  Private/Admin
+   */
+  router.post(
+    "/packages/:id/schedule",
+    validate(packageValidators.schedulePackage),
+    adminPackageController.schedule
+  );
 
-router.get(
-  "/admin/packages",
-  authMiddleware,
-  adminMiddleware,
-  adminPackageController.getAll
-);
+  /**
+   * @route   GET /api/v1/admin/subscriptions
+   * @desc    Get all subscriptions with pagination
+   * @access  Private/Admin
+   */
+  router.get(
+    "/subscriptions",
+    validate(packageValidators.pagination),
+    adminPackageController.getAllSubs
+  );
 
-/**
- * @route   POST /api/v1/admin/packages
- * @desc    Create a new package
- * @access  Private/Admin
- */
-router.post(
-  "/admin/packages",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.createPackage),
-  adminPackageController.create
-);
+  /**
+   * @route   GET /api/v1/admin/packages/revenue-report
+   * @desc    Get revenue report
+   * @access  Private/Admin
+   */
+  router.get(
+    "/packages/revenue-report",
+    validate(packageValidators.dateRange),
+    adminPackageController.getRevenue
+  );
 
-/**
- * @route   PUT /api/v1/admin/packages/:id
- * @desc    Update a package
- * @access  Private/Admin
- */
-router.put(
-  "/admin/packages/:id",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.updatePackage),
-  adminPackageController.update
-);
+  /**
+   * @route   GET /api/v1/admin/packages/usage-stats
+   * @desc    Get plan usage statistics
+   * @access  Private/Admin
+   */
+  router.get("/packages/usage-stats", adminPackageController.getUsageStats);
 
-/**
- * @route   DELETE /api/v1/admin/packages/:id
- * @desc    Delete a package
- * @access  Private/Admin
- */
-router.delete(
-  "/admin/packages/:id",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.deletePackage),
-  adminPackageController.delete
-);
+  /**
+   * @route   GET /api/v1/admin/packages/:packageId/subscribers
+   * @desc    Get subscribers for a specific package
+   * @access  Private/Admin
+   */
+  router.get(
+    "/packages/:packageId/subscribers",
+    validate(packageValidators.getSubscribers),
+    validate(packageValidators.pagination),
+    adminPackageController.getSubscribers
+  );
 
-/**
- * @route   POST /api/v1/admin/packages/:id/schedule
- * @desc    Schedule package activation/deactivation
- * @access  Private/Admin
- */
-router.post(
-  "/admin/packages/:id/schedule",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.schedulePackage),
-  adminPackageController.schedule
-);
+  /**
+   * @route   POST /api/v1/admin/subscriptions/send-reminder
+   * @desc    Send renewal reminder or upgrade offer
+   * @access  Private/Admin
+   */
+  router.post(
+    "/subscriptions/send-reminder",
+    validate(packageValidators.sendReminder),
+    adminPackageController.sendReminder
+  );
 
-/**
- * @route   GET /api/v1/admin/subscriptions
- * @desc    Get all subscriptions with pagination
- * @access  Private/Admin
- */
-router.get(
-  "/admin/subscriptions",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.pagination),
-  adminPackageController.getAllSubs
-);
+  /**
+   * @route   GET /api/v1/admin/packages/export-billing
+   * @desc    Export billing data as CSV
+   * @access  Private/Admin
+   */
+  router.get(
+    "/packages/export-billing",
+    validate(packageValidators.dateRange),
+    adminPackageController.exportBilling
+  );
 
-/**
- * @route   GET /api/v1/admin/packages/revenue-report
- * @desc    Get revenue report
- * @access  Private/Admin
- */
-router.get(
-  "/admin/packages/revenue-report",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.dateRange),
-  adminPackageController.getRevenue
-);
-
-/**
- * @route   GET /api/v1/admin/packages/usage-stats
- * @desc    Get plan usage statistics
- * @access  Private/Admin
- */
-router.get(
-  "/admin/packages/usage-stats",
-  authMiddleware,
-  adminMiddleware,
-  adminPackageController.getUsageStats
-);
-
-/**
- * @route   GET /api/v1/admin/packages/:packageId/subscribers
- * @desc    Get subscribers for a specific package
- * @access  Private/Admin
- */
-router.get(
-  "/admin/packages/:packageId/subscribers",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.getSubscribers),
-  validate(packageValidators.pagination),
-  adminPackageController.getSubscribers
-);
-
-/**
- * @route   POST /api/v1/admin/subscriptions/send-reminder
- * @desc    Send renewal reminder or upgrade offer
- * @access  Private/Admin
- */
-router.post(
-  "/admin/subscriptions/send-reminder",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.sendReminder),
-  adminPackageController.sendReminder
-);
-
-/**
- * @route   GET /api/v1/admin/packages/export-billing
- * @desc    Export billing data as CSV
- * @access  Private/Admin
- */
-router.get(
-  "/admin/packages/export-billing",
-  authMiddleware,
-  adminMiddleware,
-  validate(packageValidators.dateRange),
-  adminPackageController.exportBilling
-);
-
-export default router;
+  return router;
+};
