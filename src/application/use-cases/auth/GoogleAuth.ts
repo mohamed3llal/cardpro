@@ -1,4 +1,4 @@
-// src/application/use-cases/auth/GoogleAuth.ts - UPDATED VERSION
+// src/application/use-cases/auth/GoogleAuth.ts - FIXED VERSION
 
 import { IUserRepository } from "@domain/interfaces/IUserRepository";
 import { IAuthService } from "@domain/interfaces/IAuthServices";
@@ -151,43 +151,33 @@ export class GoogleAuthUseCase {
         user = await this.userRepository.create(newUserData);
         isNewUser = true;
 
-        // AUTO-SUBSCRIBE TO FREE PLAN
+        // ✅ AUTO-SUBSCRIBE TO FREE PLAN (FIXED)
         try {
-          // Find the free package
-          const packages = await this.packageRepository.getAllPackages(false);
-          const freePlan = packages.find((pkg) => pkg.tier === "free");
+          // Check if user already has a subscription (race condition protection)
+          const existingSubscription =
+            await this.packageRepository.getUserActiveSubscription(user.id!);
 
-          if (freePlan) {
-            // Calculate subscription period
-            const currentPeriodStart = new Date();
-            const currentPeriodEnd = new Date(currentPeriodStart);
+          if (!existingSubscription) {
+            // Find the free package
+            const packages = await this.packageRepository.getAllPackages(false);
+            const freePlan = packages.find((pkg) => pkg.tier === "free");
 
-            // For free plan, set period to 1 year
-            if (freePlan.interval === "month") {
-              currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-            } else if (freePlan.interval === "year") {
-              currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+            if (freePlan) {
+              // ✅ FIX: Only call createSubscription - it handles usage creation internally
+              await this.packageRepository.createSubscription({
+                userId: user.id!,
+                packageId: freePlan.id,
+              });
+
+              console.log(`✅ Auto-subscribed user ${user.id} to free plan`);
             } else {
-              // Default to 1 year for free plans
-              currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+              console.warn(
+                "⚠️ Free plan not found, user created without subscription"
+              );
             }
-
-            // Create subscription with required dates
-            await this.packageRepository.createSubscription({
-              userId: user.id!,
-              packageId: freePlan.id,
-            });
-
-            // Initialize usage tracking
-            await this.packageRepository.createPackageUsage(
-              user.id!,
-              freePlan.id
-            );
-
-            console.log(`✅ Auto-subscribed user ${user.id} to free plan`);
           } else {
-            console.warn(
-              "⚠️ Free plan not found, user created without subscription"
+            console.log(
+              `ℹ️ User ${user.id} already has a subscription, skipping auto-subscribe`
             );
           }
         } catch (subError) {

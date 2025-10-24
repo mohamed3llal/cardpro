@@ -345,20 +345,55 @@ export class PackageRepository implements IPackageRepository {
     userId: string,
     packageId: string
   ): Promise<PackageUsage> {
-    const now = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+    try {
+      console.log(
+        `📊 PackageRepository.createPackageUsage called for user: ${userId}, package: ${packageId}`
+      );
 
-    const usage = await PackageUsageModel.create({
-      userId,
-      packageId,
-      cardsCreated: 0,
-      boostsUsed: 0,
-      periodStart: now,
-      periodEnd,
-    });
+      // Validate inputs
+      if (!userId || !packageId) {
+        throw new Error(
+          `Invalid parameters: userId=${userId}, packageId=${packageId}`
+        );
+      }
 
-    return usage.toJSON() as PackageUsage;
+      // Check if usage already exists
+      const existingUsage = await PackageUsageModel.findOne({ userId }).lean();
+      if (existingUsage) {
+        console.log(
+          `⚠️ Package usage already exists for user ${userId}, returning existing`
+        );
+        return existingUsage as PackageUsage;
+      }
+
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+      const usageData = {
+        userId,
+        packageId,
+        cardsCreated: 0,
+        boostsUsed: 0,
+        periodStart: now,
+        periodEnd,
+      };
+
+      console.log(
+        `📝 Creating package usage with data:`,
+        JSON.stringify(usageData)
+      );
+
+      const usage = await PackageUsageModel.create(usageData);
+
+      console.log(`✅ Package usage created successfully:`, usage._id);
+
+      return usage.toJSON() as PackageUsage;
+    } catch (error: any) {
+      console.error(`❌ PackageRepository.createPackageUsage failed:`, error);
+      console.error(`Stack trace:`, error.stack);
+      throw new Error(`Failed to create package usage: ${error.message}`);
+    }
   }
 
   async incrementCardUsage(userId: string): Promise<void> {
