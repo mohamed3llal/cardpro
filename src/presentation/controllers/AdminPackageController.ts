@@ -32,20 +32,11 @@ export class AdminPackageController {
     try {
       const includeInactive = req.query.includeInactive === "true";
 
-      console.log(
-        "🎮 AdminPackageController.getAll - includeInactive:",
-        includeInactive
-      );
-
       const packages = await this.getAllPackagesUseCase.execute(
         includeInactive
       );
 
-      console.log(`✅ Controller received ${packages.length} packages`);
-
       const packagesDTO = PackageDTO.fromEntities(packages);
-
-      console.log(`✅ Transformed to ${packagesDTO.length} DTOs`);
 
       ResponseHandler.success(res, {
         packages: packagesDTO,

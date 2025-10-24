@@ -170,15 +170,12 @@ export class GoogleAuthUseCase {
                   packageId: freePlan.id,
                 });
 
-              console.log(`✅ Auto-subscribed user ${user.id} to free plan`);
-
               // ✅ CRITICAL: Create usage tracking
               try {
                 await this.packageRepository.createPackageUsage(
                   user.id!,
                   freePlan.id
                 );
-                console.log(`✅ Package usage created for user ${user.id}`);
               } catch (usageError) {
                 console.error(
                   `❌ Failed to create usage for user ${user.id}:`,

@@ -7,14 +7,10 @@ export class GetAllPackagesAdmin {
 
   async execute(includeInactive = true): Promise<Package[]> {
     try {
-      console.log("📦 Fetching packages, includeInactive:", includeInactive);
-
       // Get base packages
       const packages = await this.packageRepository.getAllPackages(
         includeInactive
       );
-
-      console.log(`✅ Found ${packages.length} packages`);
 
       // If no packages, return empty array
       if (!packages || packages.length === 0) {
@@ -47,9 +43,6 @@ export class GetAllPackagesAdmin {
         })
       );
 
-      console.log(
-        `✅ Successfully enriched ${packagesWithStats.length} packages with stats`
-      );
       return packagesWithStats;
     } catch (error) {
       console.error("❌ Error in GetAllPackagesAdmin.execute:", error);

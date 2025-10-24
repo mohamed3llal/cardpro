@@ -58,21 +58,15 @@ export class SubscribeToPackage {
       }
 
       // 6. Create subscription with calculated dates
-      console.log(
-        `📦 Creating subscription for user ${userId} to package ${packageId}`
-      );
+
       const subscription = await this.packageRepository.createSubscription({
         userId,
         packageId,
         paymentMethodId,
       });
 
-      console.log(`✅ Subscription created: ${subscription.id}`);
-
       // 7. Initialize usage tracking (CRITICAL)
       try {
-        console.log(`📊 Creating package usage tracking for user ${userId}`);
-
         // Check if usage already exists (race condition protection)
         const existingUsage = await this.packageRepository.getPackageUsage(
           userId
@@ -81,7 +75,6 @@ export class SubscribeToPackage {
         if (!existingUsage) {
           // ✅ FIX: Usage creation is now mandatory for subscription success
           await this.packageRepository.createPackageUsage(userId, packageId);
-          console.log(`✅ Package usage created for user ${userId}`);
         } else {
           console.log(`ℹ️ Package usage already exists for user ${userId}`);
         }
@@ -98,7 +91,6 @@ export class SubscribeToPackage {
             subscription.id,
             true
           );
-          console.log(`🔄 Rolled back subscription ${subscription.id}`);
         } catch (rollbackError) {
           console.error(`❌ Failed to rollback subscription:`, rollbackError);
         }

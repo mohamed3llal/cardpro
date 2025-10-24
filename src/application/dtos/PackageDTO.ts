@@ -95,10 +95,6 @@ export class PackageUsageDTO {
 
   static fromEntity(usage: PackageUsage, pkg: Package): PackageUsageDTO {
     try {
-      console.log(`📦 PackageUsageDTO.fromEntity called`);
-      console.log(`Usage ID: ${usage.id}`);
-      console.log(`Package ID: ${pkg.id}`);
-
       return {
         userId: usage.userId,
         packageId: usage.packageId,

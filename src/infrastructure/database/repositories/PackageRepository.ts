@@ -33,20 +33,12 @@ export class PackageRepository implements IPackageRepository {
 
   async getAllPackages(includeInactive = false): Promise<Package[]> {
     try {
-      console.log(
-        "🔍 PackageRepository.getAllPackages - includeInactive:",
-        includeInactive
-      );
-
       const query = includeInactive ? {} : { isActive: true };
-      console.log("📋 Query:", JSON.stringify(query));
 
       const packages = await PackageModel.find(query)
         .sort({ price: 1 })
         .lean()
         .exec();
-
-      console.log(`✅ Found ${packages.length} packages in database`);
 
       // Transform MongoDB documents to Package entities
       return packages.map((pkg: any) => ({
@@ -261,9 +253,6 @@ export class PackageRepository implements IPackageRepository {
       const existingUsage = await this.getPackageUsage(data.userId);
       if (!existingUsage) {
         await this.createPackageUsage(data.userId, data.packageId);
-        console.log(
-          `✅ Usage tracking auto-created for subscription ${subscription._id}`
-        );
       }
     } catch (usageError) {
       console.error(
@@ -356,16 +345,11 @@ export class PackageRepository implements IPackageRepository {
   // Usage Tracking
   async getPackageUsage(userId: string): Promise<PackageUsage | null> {
     try {
-      console.log(`📊 PackageRepository.getPackageUsage for user: ${userId}`);
-
       const usage = await PackageUsageModel.findOne({ userId }).lean();
 
       if (!usage) {
-        console.log(`⚠️ No usage found for user: ${userId}`);
         return null;
       }
-
-      console.log(`✅ Found usage for user ${userId}:`, usage._id);
 
       // Convert to PackageUsage entity format
       const packageUsage: PackageUsage = {
@@ -392,10 +376,6 @@ export class PackageRepository implements IPackageRepository {
     packageId: string
   ): Promise<PackageUsage> {
     try {
-      console.log(
-        `📊 PackageRepository.createPackageUsage called for user: ${userId}, package: ${packageId}`
-      );
-
       // Validate inputs
       if (!userId || !packageId) {
         throw new Error(
@@ -406,9 +386,6 @@ export class PackageRepository implements IPackageRepository {
       // Check if usage already exists
       const existingUsage = await PackageUsageModel.findOne({ userId }).lean();
       if (existingUsage) {
-        console.log(
-          `⚠️ Package usage already exists for user ${userId}, returning existing`
-        );
         return existingUsage as PackageUsage;
       }
 
@@ -425,20 +402,11 @@ export class PackageRepository implements IPackageRepository {
         periodEnd,
       };
 
-      console.log(
-        `📝 Creating package usage with data:`,
-        JSON.stringify(usageData)
-      );
-
       const usage = await PackageUsageModel.create(usageData);
 
       if (!usage) {
         throw new Error("PackageUsageModel.create returned null/undefined");
       }
-
-      console.log(
-        `✅ Package usage created successfully with ID: ${usage._id}`
-      );
 
       return usage.toJSON() as PackageUsage;
     } catch (error: any) {
