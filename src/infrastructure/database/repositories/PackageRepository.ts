@@ -218,8 +218,38 @@ export class PackageRepository implements IPackageRepository {
   }
 
   // Subscription Management
+
   async createSubscription(data: CreateSubscriptionData): Promise<UserPackage> {
-    const subscription = await UserPackageModel.create(data);
+    // Get package details to calculate period
+    const pkg = await PackageModel.findById(data.packageId).lean();
+
+    if (!pkg) {
+      throw new AppError("Package not found", 404);
+    }
+
+    // Calculate subscription period
+    const currentPeriodStart = new Date();
+    const currentPeriodEnd = new Date(currentPeriodStart);
+
+    if (pkg.interval === "month") {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    } else if (pkg.interval === "year") {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      // Default to 1 year for free plans or unrecognized intervals
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    }
+
+    // Create subscription with all required fields
+    const subscription = await UserPackageModel.create({
+      userId: data.userId,
+      packageId: data.packageId,
+      paymentMethodId: data.paymentMethodId,
+      status: "active",
+      currentPeriodStart: currentPeriodStart,
+      currentPeriodEnd: currentPeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
 
     // Update subscriber count
     await PackageModel.findByIdAndUpdate(data.packageId, {

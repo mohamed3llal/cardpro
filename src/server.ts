@@ -1,3 +1,5 @@
+// src/server.ts - UPDATED VERSION
+
 import express, { Application, Request, Response } from "express";
 import http from "http";
 import helmet from "helmet";
@@ -17,7 +19,6 @@ class Server {
   private port: number;
   private diContainer: DIContainer;
 
-  // Initialize Supabase
   constructor() {
     this.app = express();
     this.port = Number(env.PORT || 3000);
@@ -117,16 +118,34 @@ class Server {
       logger.info("Connecting to MongoDB...");
       await connectMongoDB();
 
+      // Start Cron Service (ADD THIS)
+      logger.info("Starting Cron Service...");
+      this.diContainer.cronService.start();
+
       const server = http.createServer(this.app);
       server.listen(this.port, () => {
         logger.info(`✅ Server running on port ${this.port}`);
         logger.info(`🌍 API: http://localhost:${this.port}/api/v1`);
         logger.info(`🔐 Admin API: http://localhost:${this.port}/api/v1/admin`);
       });
+
+      // Graceful shutdown (ADD THIS)
+      process.on("SIGTERM", () => this.shutdown());
+      process.on("SIGINT", () => this.shutdown());
     } catch (error) {
       logger.error("❌ Failed to start server:", error);
       process.exit(1);
     }
+  }
+
+  private async shutdown(): Promise<void> {
+    logger.info("🛑 Shutting down server...");
+
+    // Stop cron service
+    this.diContainer.cronService.stop();
+
+    logger.info("✅ Server shutdown complete");
+    process.exit(0);
   }
 }
 

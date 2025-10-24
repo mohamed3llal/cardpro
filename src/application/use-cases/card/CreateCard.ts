@@ -2,6 +2,8 @@
 
 import { Card, CardProps } from "@domain/entities/Card";
 import { ICardRepository } from "@domain/interfaces/ICardRepository";
+import { IPackageRepository } from "@domain/interfaces/IPackageRepository";
+import { AppError } from "@shared/errors/AppError";
 
 export interface CreateCardDTO {
   user_id: string;
@@ -35,11 +37,49 @@ export interface CreateCardDTO {
 }
 
 export class CreateCardUseCase {
-  constructor(private readonly cardRepository: ICardRepository) {}
+  constructor(
+    private readonly cardRepository: ICardRepository,
+    private readonly packageRepository: IPackageRepository
+  ) {}
 
   async execute(dto: CreateCardDTO): Promise<Card> {
     try {
-      // Create card entity (validation happens in constructor)
+      // 1. Get user's active subscription
+      const subscription =
+        await this.packageRepository.getUserActiveSubscription(dto.user_id);
+
+      if (!subscription) {
+        throw new AppError(
+          "No active subscription found. Please subscribe to a package to create cards.",
+          402
+        );
+      }
+
+      // 2. Get package details
+      const pkg = await this.packageRepository.getPackageById(
+        subscription.packageId
+      );
+
+      if (!pkg) {
+        throw new AppError("Package not found", 404);
+      }
+
+      // 3. Get current usage
+      const usage = await this.packageRepository.getPackageUsage(dto.user_id);
+
+      if (!usage) {
+        throw new AppError("Usage data not found", 404);
+      }
+
+      // 4. Check card limit
+      if (usage.cardsCreated >= pkg.features.maxCards) {
+        throw new AppError(
+          `Card limit reached. Your ${pkg.name} plan allows ${pkg.features.maxCards} card(s). Please upgrade your plan to create more cards.`,
+          403
+        );
+      }
+
+      // 5. Create card entity (validation happens in constructor)
       const cardProps: CardProps = {
         user_id: dto.user_id,
         title: dto.title,
@@ -63,10 +103,17 @@ export class CreateCardUseCase {
 
       const card = Card.create(cardProps);
 
+      // 6. Create card in database
       const createdCard = await this.cardRepository.create(card);
+
+      // 7. Increment usage counter
+      await this.packageRepository.incrementCardUsage(dto.user_id);
 
       return createdCard;
     } catch (error: any) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new Error(`Failed to create card: ${error.message}`);
     }
   }

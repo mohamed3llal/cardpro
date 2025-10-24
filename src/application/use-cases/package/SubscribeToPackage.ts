@@ -1,4 +1,4 @@
-// src/application/use-cases/package/SubscribeToPackage.ts
+// src/application/use-cases/package/SubscribeToPackage.ts - FIXED VERSION
 
 import { IPackageRepository } from "../../../domain/interfaces/IPackageRepository";
 import { UserPackage } from "../../../domain/entities/Subscription";
@@ -45,25 +45,25 @@ export class SubscribeToPackage {
       // if (!payment.success) throw new AppError('Payment failed', 402);
     }
 
-    // 5. Calculate subscription period
+    // 5. Calculate subscription period - FIXED
     const currentPeriodStart = new Date();
-    const currentPeriodEnd = this.calculatePeriodEnd(
-      pkg.interval,
-      currentPeriodStart
-    );
+    const currentPeriodEnd = new Date(currentPeriodStart);
 
-    // 6. Create subscription
+    if (pkg.interval === "month") {
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    } else if (pkg.interval === "year") {
+      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
+    } else {
+      // Default to 1 month if interval not recognized
+      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
+    }
+
+    // 6. Create subscription with calculated dates
     const subscription = await this.packageRepository.createSubscription({
       userId,
       packageId,
       paymentMethodId,
     });
-
-    // Update with calculated dates
-    await this.packageRepository.updateSubscriptionStatus(
-      subscription.id,
-      "active"
-    );
 
     // 7. Initialize usage tracking
     await this.packageRepository.createPackageUsage(userId, packageId);
@@ -72,17 +72,5 @@ export class SubscribeToPackage {
     // await this.emailService.sendSubscriptionConfirmation(userId, subscription);
 
     return subscription;
-  }
-
-  private calculatePeriodEnd(interval: string, startDate: Date): Date {
-    const endDate = new Date(startDate);
-
-    if (interval === "month") {
-      endDate.setMonth(endDate.getMonth() + 1);
-    } else if (interval === "year") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    }
-
-    return endDate;
   }
 }

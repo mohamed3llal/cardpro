@@ -130,9 +130,12 @@ import { GetAllSubscriptionsAdmin } from "@application/use-cases/package/GetAllS
 import { GetRevenueReport } from "@application/use-cases/package/GetRevenueReport";
 import { GetPlanUsageStats } from "@application/use-cases/package/GetPlanUsageStats";
 import { GetPackageSubscribers } from "@application/use-cases/package/GetPackageSubscribers";
+import { CronService } from "@infrastructure/services/CronService";
 
 export class DIContainer {
   private static instance: DIContainer;
+
+  public readonly cronService: CronService;
 
   // Package Repository
   public readonly packageRepository: PackageRepository;
@@ -311,8 +314,13 @@ export class DIContainer {
 
     this.authService = new AuthService(jwtSecret, jwtExpiresIn);
 
+    this.packageRepository = new PackageRepository();
+
     // Initialize Card Use Cases
-    this.createCardUseCase = new CreateCardUseCase(this.cardRepository);
+    this.createCardUseCase = new CreateCardUseCase(
+      this.cardRepository,
+      this.packageRepository // ADD THIS
+    );
     this.getUserCardsUseCase = new GetUserCardsUseCase(this.cardRepository);
     this.getCardByIdUseCase = new GetCardByIdUseCase(this.cardRepository);
     this.updateCardUseCase = new UpdateCardUseCase(this.cardRepository);
@@ -332,8 +340,10 @@ export class DIContainer {
     this.googleAuthUseCase = new GoogleAuthUseCase(
       this.userRepository,
       this.authService,
+      this.packageRepository, // ADD THIS
       this.googleClientId
     );
+
     this.refreshTokenUseCase = new RefreshTokenUseCase(
       this.userRepository,
       this.authService
@@ -354,6 +364,9 @@ export class DIContainer {
     this.deleteSubcategoryUseCase = new DeleteSubcategory(
       this.domainRepository
     );
+
+    // Initialize Cron Service (ADD THIS)
+    this.cronService = new CronService(this.packageRepository);
 
     // Initialize Controllers
     this.cardController = new CardController(
@@ -608,8 +621,6 @@ export class DIContainer {
       this.getAllFeedbackUseCase,
       this.updateFeedbackStatusUseCase
     );
-
-    this.packageRepository = new PackageRepository();
 
     // Initialize Package Use Cases
     this.getAvailablePackagesUseCase = new GetAvailablePackages(
