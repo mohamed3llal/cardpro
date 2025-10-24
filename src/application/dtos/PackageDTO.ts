@@ -94,18 +94,29 @@ export class PackageUsageDTO {
   };
 
   static fromEntity(usage: PackageUsage, pkg: Package): PackageUsageDTO {
-    return {
-      userId: usage.userId,
-      packageId: usage.packageId,
-      cardsCreated: usage.cardsCreated,
-      maxCards: pkg.features.maxCards,
-      boostsUsed: usage.boostsUsed,
-      maxBoosts: pkg.features.maxBoosts,
-      period: {
-        start: usage.periodStart.toISOString(),
-        end: usage.periodEnd.toISOString(),
-      },
-    };
+    try {
+      console.log(`📦 PackageUsageDTO.fromEntity called`);
+      console.log(`Usage ID: ${usage.id}`);
+      console.log(`Package ID: ${pkg.id}`);
+
+      return {
+        userId: usage.userId,
+        packageId: usage.packageId,
+        cardsCreated: usage.cardsCreated || 0,
+        maxCards: pkg.features.maxCards,
+        boostsUsed: usage.boostsUsed || 0,
+        maxBoosts: pkg.features.maxBoosts,
+        period: {
+          start: usage.periodStart?.toISOString() || new Date().toISOString(),
+          end: usage.periodEnd?.toISOString() || new Date().toISOString(),
+        },
+      };
+    } catch (error: any) {
+      console.error(`❌ Error in PackageUsageDTO.fromEntity:`, error);
+      console.error(`Usage object:`, JSON.stringify(usage, null, 2));
+      console.error(`Package object:`, JSON.stringify(pkg, null, 2));
+      throw error;
+    }
   }
 }
 

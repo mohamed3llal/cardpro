@@ -163,13 +163,34 @@ export class GoogleAuthUseCase {
             const freePlan = packages.find((pkg) => pkg.tier === "free");
 
             if (freePlan) {
-              // ✅ FIX: Only call createSubscription - it handles usage creation internally
-              await this.packageRepository.createSubscription({
-                userId: user.id!,
-                packageId: freePlan.id,
-              });
+              // ✅ FIX: Create subscription
+              const subscription =
+                await this.packageRepository.createSubscription({
+                  userId: user.id!,
+                  packageId: freePlan.id,
+                });
 
               console.log(`✅ Auto-subscribed user ${user.id} to free plan`);
+
+              // ✅ CRITICAL: Create usage tracking
+              try {
+                await this.packageRepository.createPackageUsage(
+                  user.id!,
+                  freePlan.id
+                );
+                console.log(`✅ Package usage created for user ${user.id}`);
+              } catch (usageError) {
+                console.error(
+                  `❌ Failed to create usage for user ${user.id}:`,
+                  usageError
+                );
+                // Rollback subscription if usage creation fails
+                await this.packageRepository.cancelSubscription(
+                  subscription.id,
+                  true
+                );
+                throw new Error("Failed to initialize user subscription");
+              }
             } else {
               console.warn(
                 "⚠️ Free plan not found, user created without subscription"

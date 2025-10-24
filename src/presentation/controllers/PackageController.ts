@@ -57,20 +57,34 @@ export class PackageController {
   }
 
   // GET /subscriptions/usage - Protected
+  // GET /subscriptions/usage - Protected
   async getUsage(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId: any = req.userId;
+
+      console.log(`📊 PackageController.getUsage for user: ${userId}`);
+
+      if (!userId) {
+        ResponseHandler.error(res, "User not authenticated", 401);
+        return;
+      }
+
       const { usage, package: pkg } = await this.getPackageUsage.execute(
         userId
       );
+
+      console.log(`✅ Usage retrieved successfully for user: ${userId}`);
+
       const usageDTO = PackageUsageDTO.fromEntity(usage, pkg);
 
       ResponseHandler.success(res, usageDTO);
     } catch (error: any) {
+      console.error(`❌ Error in PackageController.getUsage:`, error);
+      console.error(`Stack:`, error.stack);
+
       ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   }
-
   // POST /subscriptions - Protected
   async subscribe(req: AuthRequest, res: Response): Promise<void> {
     try {

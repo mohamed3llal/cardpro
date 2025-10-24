@@ -218,7 +218,6 @@ export class PackageRepository implements IPackageRepository {
   }
 
   // Subscription Management
-
   async createSubscription(data: CreateSubscriptionData): Promise<UserPackage> {
     // Get package details to calculate period
     const pkg = await PackageModel.findById(data.packageId).lean();
@@ -255,6 +254,25 @@ export class PackageRepository implements IPackageRepository {
     await PackageModel.findByIdAndUpdate(data.packageId, {
       $inc: { subscriberCount: 1 },
     });
+
+    // ✅ CRITICAL: Also create usage tracking here for consistency
+    // This ensures usage is always created when subscription is created
+    try {
+      const existingUsage = await this.getPackageUsage(data.userId);
+      if (!existingUsage) {
+        await this.createPackageUsage(data.userId, data.packageId);
+        console.log(
+          `✅ Usage tracking auto-created for subscription ${subscription._id}`
+        );
+      }
+    } catch (usageError) {
+      console.error(
+        `⚠️ Failed to auto-create usage for subscription ${subscription._id}:`,
+        usageError
+      );
+      // Note: We log but don't fail here since the subscription is already created
+      // The caller should handle usage creation explicitly
+    }
 
     const populated = await subscription.populate("packageId");
     return populated.toJSON() as UserPackage;
@@ -337,8 +355,36 @@ export class PackageRepository implements IPackageRepository {
 
   // Usage Tracking
   async getPackageUsage(userId: string): Promise<PackageUsage | null> {
-    const usage = await PackageUsageModel.findOne({ userId });
-    return usage ? (usage.toJSON() as PackageUsage) : null;
+    try {
+      console.log(`📊 PackageRepository.getPackageUsage for user: ${userId}`);
+
+      const usage = await PackageUsageModel.findOne({ userId }).lean();
+
+      if (!usage) {
+        console.log(`⚠️ No usage found for user: ${userId}`);
+        return null;
+      }
+
+      console.log(`✅ Found usage for user ${userId}:`, usage._id);
+
+      // Convert to PackageUsage entity format
+      const packageUsage: PackageUsage = {
+        id: usage._id.toString(),
+        userId: usage.userId,
+        packageId: usage.packageId,
+        cardsCreated: usage.cardsCreated || 0,
+        boostsUsed: usage.boostsUsed || 0,
+        periodStart: usage.periodStart,
+        periodEnd: usage.periodEnd,
+        createdAt: usage.createdAt,
+        updatedAt: usage.updatedAt,
+      };
+
+      return packageUsage;
+    } catch (error: any) {
+      console.error(`❌ Error in getPackageUsage:`, error);
+      throw error;
+    }
   }
 
   async createPackageUsage(
@@ -386,16 +432,25 @@ export class PackageRepository implements IPackageRepository {
 
       const usage = await PackageUsageModel.create(usageData);
 
-      console.log(`✅ Package usage created successfully:`, usage._id);
+      if (!usage) {
+        throw new Error("PackageUsageModel.create returned null/undefined");
+      }
+
+      console.log(
+        `✅ Package usage created successfully with ID: ${usage._id}`
+      );
 
       return usage.toJSON() as PackageUsage;
     } catch (error: any) {
       console.error(`❌ PackageRepository.createPackageUsage failed:`, error);
       console.error(`Stack trace:`, error.stack);
-      throw new Error(`Failed to create package usage: ${error.message}`);
+
+      // Re-throw with more context
+      throw new Error(
+        `Failed to create package usage: ${error.message || "Unknown error"}`
+      );
     }
   }
-
   async incrementCardUsage(userId: string): Promise<void> {
     await PackageUsageModel.findOneAndUpdate(
       { userId },

@@ -69,7 +69,7 @@ export class SubscribeToPackage {
 
       console.log(`✅ Subscription created: ${subscription.id}`);
 
-      // 7. Initialize usage tracking (CRITICAL - with error handling)
+      // 7. Initialize usage tracking (CRITICAL)
       try {
         console.log(`📊 Creating package usage tracking for user ${userId}`);
 
@@ -79,23 +79,35 @@ export class SubscribeToPackage {
         );
 
         if (!existingUsage) {
+          // ✅ FIX: Usage creation is now mandatory for subscription success
           await this.packageRepository.createPackageUsage(userId, packageId);
           console.log(`✅ Package usage created for user ${userId}`);
         } else {
           console.log(`ℹ️ Package usage already exists for user ${userId}`);
         }
       } catch (usageError: any) {
-        // ❌ CRITICAL ERROR - Log but don't fail subscription
+        // ❌ CRITICAL ERROR - Rollback subscription if usage creation fails
         console.error(
           `❌ Failed to create package usage for user ${userId}:`,
           usageError
         );
-        console.error(
-          "Subscription created but usage tracking failed. Manual intervention may be required."
-        );
 
-        // Optionally: Send alert to admin
-        // await this.alertService.sendAlert(`Usage tracking failed for user ${userId}`);
+        // Rollback: Delete the subscription we just created
+        try {
+          await this.packageRepository.cancelSubscription(
+            subscription.id,
+            true
+          );
+          console.log(`🔄 Rolled back subscription ${subscription.id}`);
+        } catch (rollbackError) {
+          console.error(`❌ Failed to rollback subscription:`, rollbackError);
+        }
+
+        // Re-throw to fail the entire subscription process
+        throw new AppError(
+          "Failed to initialize usage tracking. Please try again.",
+          500
+        );
       }
 
       // 8. TODO: Send confirmation email
