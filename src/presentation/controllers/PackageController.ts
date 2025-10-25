@@ -71,7 +71,6 @@ export class PackageController {
       );
 
       const usageDTO = PackageUsageDTO.fromEntity(usage, pkg);
-
       ResponseHandler.success(res, usageDTO);
     } catch (error: any) {
       console.error(`❌ Error in PackageController.getUsage:`, error);
