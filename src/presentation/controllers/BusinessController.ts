@@ -21,9 +21,11 @@ export class BusinessController {
     private readonly recordContactClickUseCase: RecordContactClick
   ) {}
 
+  // src/presentation/controllers/BusinessController.ts (Updated searchBusinesses method)
+
   /**
    * GET /businesses/search
-   * Search and filter businesses
+   * Search and filter businesses with boosted results
    */
   searchBusinesses = async (
     req: Request,
@@ -93,17 +95,77 @@ export class BusinessController {
       const result = await this.searchBusinessesUseCase.execute(filters);
 
       res.status(200).json({
+        // ✅ NEW: Boosted results appear first (sponsored/promoted)
+        boosted: result.boosted.map((b: any) => ({
+          ...this.formatBusinessResponse(b),
+          is_boosted: true, // Flag to identify boosted content
+          boost_badge: "⭐ Promoted", // Optional badge text
+        })),
+        // Regular search results
         businesses: result.businesses.map((b: any) =>
           this.formatBusinessResponse(b)
         ),
         pagination: result.pagination,
         filters_applied: result.filters_applied,
         total_results: result.total_results,
+        results_info: {
+          boosted_count: result.boosted.length,
+          organic_count: result.businesses.length,
+          note: "Boosted results are promoted businesses matching your search",
+        },
       });
     } catch (error) {
       next(error);
     }
   };
+
+  // Helper method remains the same
+  private formatBusinessResponse(card: any): any {
+    const data = card.props || card.toJSON();
+
+    return {
+      id: data._id,
+      name: data.title,
+      slug: this.generateSlug(data.title),
+      domain_key: data.domain_key,
+      subdomain: data.subdomain_key,
+      description: data.description,
+      logo: data.logo,
+      cover_image: data.cover_image,
+      contact: {
+        phone: data.mobile_phones?.[0],
+        whatsapp: data.social_links?.whatsapp,
+        email: data.email,
+        website: data.website,
+      },
+      location: data.location
+        ? {
+            address: data.address,
+            city: this.extractCity(data.address),
+            coordinates: {
+              lat: data.location.lat,
+              lng: data.location.lng,
+            },
+            distance: data.location.distance,
+          }
+        : undefined,
+      rating: data.rating || { average: 0, count: 0 },
+      stats: {
+        views: data.views || 0,
+        views_this_month: data.views_this_month || 0,
+      },
+      tags: data.tags || [],
+      features: data.features || [],
+      payment_methods: data.payment_methods || [],
+      hours: data.work_hours,
+      status: "open",
+      is_verified: data.user?.domainVerified || false,
+      is_public: data.is_public,
+      owner_id: data.user_id,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+    };
+  }
 
   /**
    * GET /businesses/featured
@@ -228,54 +290,6 @@ export class BusinessController {
       res.status(200).json({ success: true });
     }
   };
-
-  // Helper methods to format responses
-  private formatBusinessResponse(card: any): any {
-    const data = card.props || card.toJSON();
-
-    return {
-      id: data._id,
-      name: data.title,
-      slug: this.generateSlug(data.title),
-      domain_key: data.domain_key,
-      subdomain: data.subdomain_key,
-      description: data.description,
-      logo: data.logo,
-      cover_image: data.cover_image,
-      contact: {
-        phone: data.mobile_phones?.[0],
-        whatsapp: data.social_links?.whatsapp,
-        email: data.email,
-        website: data.website,
-      },
-      location: data.location
-        ? {
-            address: data.address,
-            city: this.extractCity(data.address),
-            coordinates: {
-              lat: data.location.lat,
-              lng: data.location.lng,
-            },
-            distance: data.location.distance,
-          }
-        : undefined,
-      rating: data.rating || { average: 0, count: 0 },
-      stats: {
-        views: data.views || 0,
-        views_this_month: data.views_this_month || 0,
-      },
-      tags: data.tags || [],
-      features: data.features || [],
-      payment_methods: data.payment_methods || [],
-      hours: data.work_hours,
-      status: "open", // You can add logic to determine status
-      is_verified: data.user?.domainVerified || false,
-      is_public: data.is_public,
-      owner_id: data.user_id,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-    };
-  }
 
   private formatDetailedBusinessResponse(card: any): any {
     const data = card.props || card.toJSON();

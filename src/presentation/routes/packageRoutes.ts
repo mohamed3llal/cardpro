@@ -21,74 +21,38 @@ export const createPackageRoutes = (
   // ============================================================================
 
   /**
-   * @route   GET /api/v1/packages
-   * @desc    Get all available packages
-   * @access  Public
-   */
-  router.get(
-    "/packages",
-    packageController.getPackages.bind(packageController)
-  );
-
-  // ============================================================================
-  // USER PROTECTED ROUTES
-  // ============================================================================
-
-  /**
-   * @route   GET /api/v1/subscriptions/current
-   * @desc    Get current user subscription
+   * @route   POST /api/v1/cards/:cardId/boost
+   * @desc    Boost a card for X days (1 boost point = 1 day)
    * @access  Private
-   */
-  router.get(
-    "/subscriptions/current",
-    auth,
-    packageController.getCurrentUserSubscription.bind(packageController)
-  );
-
-  /**
-   * @route   GET /api/v1/subscriptions/usage
-   * @desc    Get package usage statistics
-   * @access  Private
-   */
-  router.get(
-    "/subscriptions/usage",
-    auth,
-    packageController.getUsage.bind(packageController)
-  );
-
-  /**
-   * @route   POST /api/v1/subscriptions
-   * @desc    Subscribe to a package
-   * @access  Private
+   * @body    { duration: number } - Number of days (1-30)
    */
   router.post(
-    "/subscriptions",
+    "/cards/:cardId/boost",
     auth,
-    validate(packageValidators.subscribe),
-    packageController.subscribe.bind(packageController)
+    validate(packageValidators.boostCard),
+    packageController.boostCardById.bind(packageController)
   );
 
   /**
-   * @route   POST /api/v1/subscriptions/cancel
-   * @desc    Cancel subscription
-   * @access  Private
-   */
-  router.post(
-    "/subscriptions/cancel",
-    auth,
-    validate(packageValidators.cancel),
-    packageController.cancel.bind(packageController)
-  );
-
-  /**
-   * @route   GET /api/v1/boosts/active
-   * @desc    Get active boosts
+   * @route   GET /api/v1/boosts/remaining
+   * @desc    Get remaining boost points
    * @access  Private
    */
   router.get(
-    "/boosts/active",
+    "/boosts/remaining",
     auth,
-    packageController.getActiveCardBoosts.bind(packageController)
+    packageController.getRemainingBoostPoints.bind(packageController)
+  );
+
+  /**
+   * @route   GET /api/v1/cards/:cardId/boost-stats
+   * @desc    Get boost statistics for a card
+   * @access  Private
+   */
+  router.get(
+    "/cards/:cardId/boost-stats",
+    auth,
+    packageController.getCardBoostStats.bind(packageController)
   );
 
   /**
