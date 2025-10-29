@@ -29,6 +29,13 @@ export default class packageValidators {
 
   // Boost card
   static boostCard = Joi.object({
+    cardId: Joi.string()
+      .required()
+      .regex(/^[0-9a-fA-F]{24}$/)
+      .messages({
+        "string.empty": "Card ID is required",
+        "string.pattern.base": "Invalid card ID",
+      }),
     [Segments.BODY]: Joi.object({
       duration: Joi.number().integer().min(1).max(30).required().messages({
         "any.required": "Duration is required",
