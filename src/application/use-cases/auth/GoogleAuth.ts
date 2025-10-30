@@ -193,10 +193,6 @@ export class GoogleAuthUseCase {
                 "⚠️ Free plan not found, user created without subscription"
               );
             }
-          } else {
-            console.log(
-              `ℹ️ User ${user.id} already has a subscription, skipping auto-subscribe`
-            );
           }
         } catch (subError) {
           console.error("Failed to auto-subscribe user:", subError);

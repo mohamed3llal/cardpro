@@ -75,8 +75,6 @@ export class SubscribeToPackage {
         if (!existingUsage) {
           // ✅ FIX: Usage creation is now mandatory for subscription success
           await this.packageRepository.createPackageUsage(userId, packageId);
-        } else {
-          console.log(`ℹ️ Package usage already exists for user ${userId}`);
         }
       } catch (usageError: any) {
         // ❌ CRITICAL ERROR - Rollback subscription if usage creation fails
