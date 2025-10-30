@@ -44,17 +44,6 @@ export interface IPackageRepository {
   incrementBoostUsage(userId: string): Promise<void>;
   resetUsageCounters(userId: string): Promise<void>;
 
-  // Boost Management
-  createBoost(data: BoostCardData): Promise<BoostCard>;
-  getActiveBoosts(userId: string): Promise<BoostCard[]>;
-  getCardActiveBoost(cardId: string): Promise<BoostCard | null>;
-  expireBoost(id: string): Promise<void>;
-  updateBoostStats(
-    id: string,
-    impressions: number,
-    clicks: number
-  ): Promise<void>;
-
   // Analytics
   getSubscriberCount(packageId: string): Promise<number>;
   getPackageRevenue(packageId: string): Promise<number>;
@@ -65,4 +54,26 @@ export interface IPackageRepository {
     page: number,
     limit: number
   ): Promise<any>;
+
+  // Boost Management (Updated)
+  createBoost(data: BoostCardData): Promise<BoostCard>;
+  getActiveBoosts(userId: string): Promise<BoostCard[]>;
+  getCardActiveBoost(cardId: string): Promise<BoostCard | null>;
+  expireBoost(id: string): Promise<void>;
+  updateBoostStats(
+    id: string,
+    impressions: number,
+    clicks: number
+  ): Promise<void>;
+
+  // ✅ NEW: Boost Points System
+  incrementBoostUsageByAmount(userId: string, amount: number): Promise<void>;
+  getAllActiveBoosts(): Promise<BoostCard[]>;
+  getBoostStats(cardId: string): Promise<{
+    totalBoosts: number;
+    totalDays: number;
+    totalImpressions: number;
+    totalClicks: number;
+  }>;
+  getRemainingBoostPoints(userId: string): Promise<number>;
 }

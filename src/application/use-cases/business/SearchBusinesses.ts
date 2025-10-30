@@ -1,5 +1,7 @@
+// src/application/use-cases/business/SearchBusinesses.ts (Updated)
 import { Card } from "@domain/entities/Card";
 import { ICardRepository } from "@domain/interfaces/ICardRepository";
+import { IPackageRepository } from "@domain/interfaces/IPackageRepository";
 import { AppError } from "@shared/errors/AppError";
 
 export interface SearchBusinessesFilters {
@@ -24,6 +26,7 @@ export interface SearchBusinessesFilters {
 
 export interface SearchBusinessesResponse {
   businesses: Card[];
+  boosted: Card[]; // ✅ NEW: Separate boosted results
   pagination: {
     current_page: number;
     total_pages: number;
@@ -37,7 +40,10 @@ export interface SearchBusinessesResponse {
 }
 
 export class SearchBusinesses {
-  constructor(private readonly cardRepository: ICardRepository) {}
+  constructor(
+    private readonly cardRepository: ICardRepository,
+    private readonly packageRepository: IPackageRepository // ✅ NEW: Inject package repository
+  ) {}
 
   async execute(
     filters: SearchBusinessesFilters
@@ -62,14 +68,26 @@ export class SearchBusinesses {
         options.radiusKm = filters.radius || 10;
       }
 
-      // ✅ Execute query and get accurate count
+      // ✅ NEW: Get active boosted cards matching the search criteria
+      const boostedCards = await this.getBoostedCards(query, filters);
+
+      // Execute main query
       const [businesses, total] = await Promise.all([
         this.cardRepository.findActiveVerifiedUserCards(query, options),
         this.cardRepository.countActiveVerifiedUserCards(query, options),
       ]);
 
+      // ✅ NEW: Filter out boosted cards from regular results to avoid duplicates
+      const boostedCardIds = new Set(
+        boostedCards.map((c: any) => c.id || c._id?.toString())
+      );
+      const regularBusinesses = businesses.filter(
+        (b: any) => !boostedCardIds.has(b.id || b.props?._id?.toString())
+      );
+
       return {
-        businesses,
+        boosted: boostedCards, // ✅ NEW: Boosted cards appear first
+        businesses: regularBusinesses,
         pagination: {
           current_page: page,
           total_pages: Math.ceil(total / limit),
@@ -84,6 +102,58 @@ export class SearchBusinesses {
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError("Failed to search businesses", 500);
+    }
+  }
+
+  // ✅ NEW: Get boosted cards matching search criteria
+  private async getBoostedCards(
+    baseQuery: any,
+    filters: SearchBusinessesFilters
+  ): Promise<Card[]> {
+    try {
+      // Get active boosts
+      const activeBoosts = await this.packageRepository.getAllActiveBoosts();
+
+      if (!activeBoosts || activeBoosts.length === 0) {
+        return [];
+      }
+
+      // Extract card IDs from active boosts
+      const boostedCardIds = activeBoosts.map((boost) => boost.cardId);
+
+      // Build query for boosted cards (apply same filters as main search)
+      const boostedQuery = {
+        ...baseQuery,
+        _id: { $in: boostedCardIds },
+      };
+
+      // Get boosted cards with same filters
+      const options: any = {
+        sort: {
+          views: -1, // Sort boosted by popularity
+          "rating.average": -1,
+        },
+        limit: 5, // Show max 5 boosted cards
+      };
+
+      if (filters.latitude && filters.longitude) {
+        options.userLocation = {
+          latitude: filters.latitude,
+          longitude: filters.longitude,
+        };
+        options.radiusKm = filters.radius || 10;
+      }
+
+      const boostedCards =
+        await this.cardRepository.findActiveVerifiedUserCards(
+          boostedQuery,
+          options
+        );
+
+      return boostedCards;
+    } catch (error) {
+      console.error("Error fetching boosted cards:", error);
+      return []; // Don't fail the whole search if boost fetch fails
     }
   }
 
@@ -137,7 +207,6 @@ export class SearchBusinesses {
       query.address = { $regex: filters.city, $options: "i" };
     }
 
-    // ✅ Ensure location exists for geo queries
     if (filters.latitude && filters.longitude) {
       query["location.lat"] = { $exists: true, $ne: null };
       query["location.lng"] = { $exists: true, $ne: null };
@@ -151,7 +220,6 @@ export class SearchBusinesses {
       query.languages = { $in: filters.languages };
     }
 
-    // ✅ Rating filter
     if (filters.rating && filters.rating > 0) {
       query["rating.average"] = { $gte: filters.rating };
     }
@@ -179,7 +247,6 @@ export class SearchBusinesses {
         return { created_at: -1 };
 
       case "nearest":
-        // Handled by $near in query
         return {};
 
       default:
@@ -202,28 +269,5 @@ export class SearchBusinesses {
     if (filters.languages) applied.languages = filters.languages;
 
     return applied;
-  }
-
-  private calculateDistance(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number {
-    const R = 6371; // Earth's radius in km
-    const dLat = this.toRad(lat2 - lat1);
-    const dLon = this.toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) *
-        Math.cos(this.toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c * 10) / 10; // Round to 1 decimal
-  }
-
-  private toRad(degrees: number): number {
-    return degrees * (Math.PI / 180);
   }
 }

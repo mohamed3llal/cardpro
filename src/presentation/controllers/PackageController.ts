@@ -1,62 +1,26 @@
-// src/presentation/controllers/PackageController.ts
+// src/presentation/controllers/PackageController.ts (Updated methods)
 
 import { Request, Response } from "express";
 import { ResponseHandler } from "../../shared/utils/ResponseHandler";
-import { GetAvailablePackages } from "../../application/use-cases/package/GetAvailablePackages";
-import { SubscribeToPackage } from "../../application/use-cases/package/SubscribeToPackage";
-import { GetCurrentSubscription } from "../../application/use-cases/package/GetCurrentSubscription";
-import { GetPackageUsage } from "../../application/use-cases/package/GetPackageUsage";
-import { CancelSubscription } from "../../application/use-cases/package/CancelSubscription";
-import { BoostCardUseCase } from "../../application/use-cases/package/BoostCard";
-import { GetActiveBoosts } from "../../application/use-cases/package/GetActiveBoosts";
+import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
+import { GetPackageUsage } from "@application/use-cases/package/GetPackageUsage";
+import { BoostCardUseCase } from "@application/use-cases/package/BoostCard";
+import { GetActiveBoosts } from "@application/use-cases/package/GetActiveBoosts";
 import {
   PackageDTO,
   UserPackageDTO,
   PackageUsageDTO,
   BoostCardDTO,
-} from "../../application/dtos/PackageDTO";
-import { AuthRequest } from "@infrastructure/middleware/authMiddleware";
+} from "@application/dtos/PackageDTO";
 
 export class PackageController {
   constructor(
-    private getAvailablePackages: GetAvailablePackages,
-    private subscribeToPackage: SubscribeToPackage,
-    private getCurrentSubscription: GetCurrentSubscription,
     private getPackageUsage: GetPackageUsage,
-    private cancelSubscription: CancelSubscription,
     private boostCard: BoostCardUseCase,
-    private getActiveBoosts: GetActiveBoosts
+    private packageRepository: any
   ) {}
 
-  // GET /packages - Public
-  async getPackages(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const packages = await this.getAvailablePackages.execute();
-      const packagesDTO = PackageDTO.fromEntities(packages);
-
-      ResponseHandler.success(res, packagesDTO);
-    } catch (error: any) {
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
-    }
-  }
-
-  // GET /subscriptions/current - Protected
-  async getCurrentUserSubscription(
-    req: AuthRequest,
-    res: Response
-  ): Promise<void> {
-    try {
-      const userId: any = req.userId;
-      const subscription = await this.getCurrentSubscription.execute(userId);
-      const subscriptionDTO = UserPackageDTO.fromEntity(subscription);
-
-      ResponseHandler.success(res, subscriptionDTO);
-    } catch (error: any) {
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
-    }
-  }
-
-  // GET /subscriptions/usage - Protected
+  // ✅ UPDATED: Get usage with remaining boost points
   async getUsage(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId: any = req.userId;
@@ -70,79 +34,59 @@ export class PackageController {
         userId
       );
 
+      // Calculate remaining boost points
+      const remainingBoostPoints = Math.max(
+        0,
+        pkg.features.maxBoosts - usage.boostsUsed
+      );
+
       const usageDTO = PackageUsageDTO.fromEntity(usage, pkg);
-      ResponseHandler.success(res, usageDTO);
-    } catch (error: any) {
-      console.error(`❌ Error in PackageController.getUsage:`, error);
-      console.error(`Stack:`, error.stack);
-
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
-    }
-  }
-  // POST /subscriptions - Protected
-  async subscribe(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const userId: any = req.userId;
-      const { packageId, paymentMethodId } = req.body;
-
-      const subscription = await this.subscribeToPackage.execute({
-        userId,
-        packageId,
-        paymentMethodId,
-      });
-
-      const subscriptionDTO = UserPackageDTO.fromEntity(subscription);
-
-      ResponseHandler.success(res, subscriptionDTO, 201);
-    } catch (error: any) {
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
-    }
-  }
-
-  // POST /subscriptions/cancel - Protected
-  async cancel(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const userId: any = req.userId;
-      const { reason, cancelImmediately } = req.body;
-
-      const subscription = await this.cancelSubscription.execute({
-        userId,
-        reason,
-        cancelImmediately,
-      });
-
-      const message = cancelImmediately
-        ? "Subscription cancelled immediately"
-        : "Subscription will be cancelled at period end";
 
       ResponseHandler.success(res, {
-        message,
-        subscription: UserPackageDTO.fromEntity(subscription),
+        ...usageDTO,
+        remainingBoostPoints, // ✅ NEW: Add remaining points
+        boostPointsInfo: {
+          total: pkg.features.maxBoosts,
+          used: usage.boostsUsed,
+          remaining: remainingBoostPoints,
+          note: "Each boost point = 1 day of promotion",
+        },
       });
     } catch (error: any) {
+      console.error(`❌ Error in PackageController.getUsage:`, error);
       ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
   }
 
-  // GET /boosts/active - Protected
-  async getActiveCardBoosts(req: AuthRequest, res: Response): Promise<void> {
-    try {
-      const userId: any = req.userId;
-      const boosts = await this.getActiveBoosts.execute(userId);
-      const boostsDTO = BoostCardDTO.fromEntities(boosts);
-
-      ResponseHandler.success(res, boostsDTO);
-    } catch (error: any) {
-      ResponseHandler.error(res, error.message, error.statusCode || 500);
-    }
-  }
-
-  // POST /cards/:cardId/boost - Protected
+  // ✅ UPDATED: Boost card with points validation
   async boostCardById(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId: any = req.userId;
       const { cardId } = req.params;
       const { duration } = req.body;
+
+      // Validate duration
+      if (!duration || duration < 1 || duration > 30) {
+        ResponseHandler.error(
+          res,
+          "Duration must be between 1 and 30 days",
+          400
+        );
+        return;
+      }
+
+      // Check remaining boost points before attempting
+      const remainingPoints =
+        await this.packageRepository.getRemainingBoostPoints(userId);
+
+      if (remainingPoints < duration) {
+        ResponseHandler.error(
+          res,
+          `Insufficient boost points. You have ${remainingPoints} point(s) remaining. Each day requires 1 point. You need ${duration} points for ${duration} day(s).`,
+          400
+        );
+        return;
+      }
 
       const boost = await this.boostCard.execute({
         userId,
@@ -152,7 +96,63 @@ export class PackageController {
 
       const boostDTO = BoostCardDTO.fromEntity(boost);
 
-      ResponseHandler.success(res, boostDTO, 201);
+      ResponseHandler.success(
+        res,
+        {
+          boost: boostDTO,
+          pointsUsed: duration,
+          remainingPoints: remainingPoints - duration,
+          message: `Card boosted successfully for ${duration} day(s). ${duration} boost point(s) consumed.`,
+        },
+        201
+      );
+    } catch (error: any) {
+      ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  }
+
+  // ✅ NEW: Get boost statistics for a card
+  async getCardBoostStats(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { cardId } = req.params;
+
+      const stats = await this.packageRepository.getBoostStats(cardId);
+
+      ResponseHandler.success(res, {
+        cardId,
+        stats: {
+          totalBoosts: stats.totalBoosts,
+          totalDaysPromoted: stats.totalDays,
+          totalImpressions: stats.totalImpressions,
+          totalClicks: stats.totalClicks,
+          averageClickRate:
+            stats.totalImpressions > 0
+              ? ((stats.totalClicks / stats.totalImpressions) * 100).toFixed(
+                  2
+                ) + "%"
+              : "0%",
+        },
+      });
+    } catch (error: any) {
+      ResponseHandler.error(res, error.message, error.statusCode || 500);
+    }
+  }
+
+  // ✅ NEW: Get remaining boost points
+  async getRemainingBoostPoints(
+    req: AuthRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId: any = req.userId;
+
+      const remainingPoints =
+        await this.packageRepository.getRemainingBoostPoints(userId);
+
+      ResponseHandler.success(res, {
+        remainingPoints,
+        message: `You have ${remainingPoints} boost point(s) available. Each point = 1 day of promotion.`,
+      });
     } catch (error: any) {
       ResponseHandler.error(res, error.message, error.statusCode || 500);
     }
