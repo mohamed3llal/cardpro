@@ -26,11 +26,6 @@ export class PackageRepository implements IPackageRepository {
     return pkg.toJSON() as Package;
   }
 
-  async getPackageById(id: string): Promise<Package | null> {
-    const pkg = await PackageModel.findById(id);
-    return pkg ? (pkg.toJSON() as Package) : null;
-  }
-
   async getAllPackages(includeInactive = false): Promise<Package[]> {
     try {
       const query = includeInactive ? {} : { isActive: true };
@@ -267,15 +262,6 @@ export class PackageRepository implements IPackageRepository {
     return populated.toJSON() as UserPackage;
   }
 
-  async getUserActiveSubscription(userId: string): Promise<UserPackage | null> {
-    const subscription = await UserPackageModel.findOne({
-      userId,
-      status: "active",
-    }).populate("packageId");
-
-    return subscription ? (subscription.toJSON() as UserPackage) : null;
-  }
-
   async getSubscriptionById(id: string): Promise<UserPackage | null> {
     const subscription = await UserPackageModel.findById(id).populate(
       "packageId"
@@ -450,58 +436,6 @@ export class PackageRepository implements IPackageRepository {
     );
   }
 
-  // Boost Management
-  async createBoost(data: BoostCardData): Promise<BoostCard> {
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + data.duration);
-
-    const boost = await BoostCardModel.create({
-      ...data,
-      startDate,
-      endDate,
-      status: "active",
-      impressions: 0,
-      clicks: 0,
-    });
-
-    return boost.toJSON() as BoostCard;
-  }
-
-  async getActiveBoosts(userId: string): Promise<BoostCard[]> {
-    const boosts = await BoostCardModel.find({
-      userId,
-      status: "active",
-      endDate: { $gte: new Date() },
-    }).populate("cardId");
-
-    return boosts.map((boost) => boost.toJSON() as BoostCard);
-  }
-
-  async getCardActiveBoost(cardId: string): Promise<BoostCard | null> {
-    const boost = await BoostCardModel.findOne({
-      cardId,
-      status: "active",
-      endDate: { $gte: new Date() },
-    });
-
-    return boost ? (boost.toJSON() as BoostCard) : null;
-  }
-
-  async expireBoost(id: string): Promise<void> {
-    await BoostCardModel.findByIdAndUpdate(id, { $set: { status: "expired" } });
-  }
-
-  async updateBoostStats(
-    id: string,
-    impressions: number,
-    clicks: number
-  ): Promise<void> {
-    await BoostCardModel.findByIdAndUpdate(id, {
-      $inc: { impressions, clicks },
-    });
-  }
-
   async getPackageSubscribers(
     packageId: string,
     page: number,
@@ -523,5 +457,205 @@ export class PackageRepository implements IPackageRepository {
       data: subscribers.map((sub) => sub.toJSON()),
       total,
     };
+  }
+
+  // ✅ FIX: Get package by ID - ensure clean return
+  async getPackageById(id: string): Promise<Package | null> {
+    try {
+      const pkg = await PackageModel.findById(id).lean().exec();
+
+      if (!pkg) return null;
+
+      // Convert MongoDB document to Package entity
+      return {
+        id: pkg._id.toString(),
+        name: pkg.name,
+        tier: pkg.tier,
+        price: pkg.price,
+        currency: pkg.currency,
+        interval: pkg.interval,
+        features: pkg.features,
+        description: pkg.description,
+        isActive: pkg.isActive,
+        scheduledActivateAt: pkg.scheduledActivateAt,
+        scheduledDeactivateAt: pkg.scheduledDeactivateAt,
+        subscriberCount: pkg.subscriberCount || 0,
+        revenue: pkg.revenue || 0,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt,
+      } as Package;
+    } catch (error) {
+      console.error("Error fetching package:", error);
+      return null;
+    }
+  }
+
+  // ✅ FIX: Get user active subscription - control population
+  async getUserActiveSubscription(userId: string): Promise<UserPackage | null> {
+    try {
+      const subscription = await UserPackageModel.findOne({
+        userId,
+        status: "active",
+      })
+        .populate({
+          path: "packageId",
+          model: "Package",
+        })
+        .lean()
+        .exec();
+
+      if (!subscription) return null;
+
+      // Convert to UserPackage entity
+      return {
+        id: subscription._id.toString(),
+        userId: subscription.userId,
+        packageId: subscription.packageId, // Keep as-is (might be string or populated object)
+        package:
+          subscription.packageId && typeof subscription.packageId === "object"
+            ? (subscription.packageId as any as Package)
+            : undefined,
+        status: subscription.status,
+        currentPeriodStart: subscription.currentPeriodStart,
+        currentPeriodEnd: subscription.currentPeriodEnd,
+        cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        paymentMethodId: subscription.paymentMethodId,
+        createdAt: subscription.createdAt,
+        updatedAt: subscription.updatedAt,
+      } as UserPackage;
+    } catch (error) {
+      console.error("Error fetching user subscription:", error);
+      return null;
+    }
+  }
+
+  // ✅ BOOST: Get card active boost
+  async getCardActiveBoost(cardId: string): Promise<BoostCard | null> {
+    try {
+      const now = new Date();
+
+      const boost = await BoostCardModel.findOne({
+        cardId,
+        status: "active",
+        endDate: { $gte: now },
+      })
+        .lean()
+        .exec();
+
+      if (!boost) return null;
+
+      return {
+        id: boost._id.toString(),
+        cardId: boost.cardId,
+        userId: boost.userId,
+        duration: boost.duration,
+        startDate: boost.startDate,
+        endDate: boost.endDate,
+        status: boost.status,
+        impressions: boost.impressions || 0,
+        clicks: boost.clicks || 0,
+        createdAt: boost.createdAt,
+      } as BoostCard;
+    } catch (error) {
+      console.error("Error fetching card boost:", error);
+      return null;
+    }
+  }
+
+  // ✅ BOOST: Create boost
+  async createBoost(data: {
+    userId: string;
+    cardId: string;
+    duration: number;
+  }): Promise<BoostCard> {
+    try {
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + data.duration);
+
+      const boost = await BoostCardModel.create({
+        userId: data.userId,
+        cardId: data.cardId,
+        duration: data.duration,
+        startDate,
+        endDate,
+        status: "active",
+        impressions: 0,
+        clicks: 0,
+      });
+
+      return {
+        id: boost._id,
+        cardId: boost.cardId,
+        userId: boost.userId,
+        duration: boost.duration,
+        startDate: boost.startDate,
+        endDate: boost.endDate,
+        status: boost.status,
+        impressions: boost.impressions,
+        clicks: boost.clicks,
+        createdAt: boost.createdAt,
+      } as BoostCard;
+    } catch (error) {
+      console.error("Error creating boost:", error);
+      throw new AppError("Failed to create boost", 500);
+    }
+  }
+
+  // ✅ BOOST: Get active boosts for user
+  async getActiveBoosts(userId: string): Promise<BoostCard[]> {
+    try {
+      const now = new Date();
+
+      const boosts = await BoostCardModel.find({
+        userId,
+        status: "active",
+        endDate: { $gte: now },
+      })
+        .lean()
+        .exec();
+
+      return boosts.map((boost) => ({
+        id: boost._id.toString(),
+        cardId: boost.cardId,
+        userId: boost.userId,
+        duration: boost.duration,
+        startDate: boost.startDate,
+        endDate: boost.endDate,
+        status: boost.status,
+        impressions: boost.impressions || 0,
+        clicks: boost.clicks || 0,
+        createdAt: boost.createdAt,
+      })) as BoostCard[];
+    } catch (error) {
+      console.error("Error fetching active boosts:", error);
+      return [];
+    }
+  }
+
+  // ✅ BOOST: Expire boost
+  async expireBoost(id: string): Promise<void> {
+    try {
+      await BoostCardModel.findByIdAndUpdate(id, {
+        $set: { status: "expired" },
+      });
+    } catch (error) {
+      console.error("Error expiring boost:", error);
+    }
+  }
+
+  // ✅ BOOST: Update boost stats (impressions/clicks)
+  async updateBoostStats(
+    id: string,
+    impressions: number,
+    clicks: number
+  ): Promise<void> {
+    try {
+      await BoostCardModel.findByIdAndUpdate(id, {
+        $inc: { impressions, clicks },
+      });
+    } catch (error) {
+      console.error("Error updating boost stats:", error);
+    }
   }
 }
