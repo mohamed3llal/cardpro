@@ -96,7 +96,7 @@ export class CardRepository implements ICardRepository {
         { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
         {
           $match: {
-            // "user.domainVerified": true,
+            "user.domainVerified": true,
             "user.isActive": true,
           },
         },

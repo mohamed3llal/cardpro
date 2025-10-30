@@ -1,3 +1,5 @@
+// src/application/use-cases/card/CreateCard.ts
+
 import { Card, CardProps } from "@domain/entities/Card";
 import { ICardRepository } from "@domain/interfaces/ICardRepository";
 import { IPackageRepository } from "@domain/interfaces/IPackageRepository";
@@ -42,8 +44,6 @@ export class CreateCardUseCase {
 
   async execute(dto: CreateCardDTO): Promise<Card> {
     try {
-      console.log(`📝 Creating card for user: ${dto.user_id}`);
-
       // 1. Get user's active subscription
       const subscription =
         await this.packageRepository.getUserActiveSubscription(dto.user_id);
@@ -55,51 +55,23 @@ export class CreateCardUseCase {
         );
       }
 
-      // 2. ✅ FIX: Extract packageId properly
-      let packageId: string;
-
-      if (typeof subscription.packageId === "string") {
-        packageId = subscription.packageId;
-      } else if (
-        subscription.packageId &&
-        typeof subscription.packageId === "object"
-      ) {
-        const pkgObj = subscription.packageId as any;
-
-        if (pkgObj.id) {
-          packageId = pkgObj.id;
-        } else if (pkgObj._id) {
-          packageId =
-            typeof pkgObj._id === "string" ? pkgObj._id : pkgObj._id.toString();
-        } else {
-          packageId =
-            typeof pkgObj._id === "string"
-              ? pkgObj._id
-              : (pkgObj._id as string);
-        }
-      } else {
-        throw new AppError("Invalid subscription package data", 500);
-      }
-
-      // 3. Get package details
-      const pkg = await this.packageRepository.getPackageById(packageId);
+      // 2. Get package details
+      const pkg = await this.packageRepository.getPackageById(
+        subscription.packageId
+      );
 
       if (!pkg) {
         throw new AppError("Package not found", 404);
       }
 
-      // 4. Get current usage
+      // 3. Get current usage
       const usage = await this.packageRepository.getPackageUsage(dto.user_id);
 
       if (!usage) {
-        console.error(`❌ Usage data not found for user: ${dto.user_id}`);
-        throw new AppError(
-          "Usage tracking not found. Please contact support.",
-          500
-        );
+        throw new AppError("Usage data not found", 404);
       }
 
-      // 5. Check card limit
+      // 4. Check card limit
       if (usage.cardsCreated >= pkg.features.maxCards) {
         throw new AppError(
           `Card limit reached. Your ${pkg.name} plan allows ${pkg.features.maxCards} card(s). Please upgrade your plan to create more cards.`,
@@ -107,7 +79,7 @@ export class CreateCardUseCase {
         );
       }
 
-      // 6. Create card entity (validation happens in constructor)
+      // 5. Create card entity (validation happens in constructor)
       const cardProps: CardProps = {
         user_id: dto.user_id,
         title: dto.title,
@@ -131,21 +103,18 @@ export class CreateCardUseCase {
 
       const card = Card.create(cardProps);
 
-      // 7. Create card in database
+      // 6. Create card in database
       const createdCard = await this.cardRepository.create(card);
 
-      // 8. Increment usage counter
+      // 7. Increment usage counter
       await this.packageRepository.incrementCardUsage(dto.user_id);
 
       return createdCard;
     } catch (error: any) {
-      console.error(`❌ Error creating card:`, error);
-
       if (error instanceof AppError) {
         throw error;
       }
-
-      throw new AppError(`Failed to create card: ${error.message}`, 500);
+      throw new Error(`Failed to create card: ${error.message}`);
     }
   }
 }
